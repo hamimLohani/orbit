@@ -66,16 +66,21 @@ public:
     void showToast(const char* title, const char* msg, uint16_t color = COLOR_NEON_CYAN, uint32_t durationMs = 3000);
     void renderToastOverlay();
 
+    // Flush the double-buffered frame to the physical display in one SPI transaction
+    void flush();
+
     // Hardware SPI Mutex Access
     static SemaphoreHandle_t getSpiMutex();
 
     Adafruit_ST7735& getTft() { return _tft; }
+    GFXcanvas16& getCanvas() { return _canvas; }
 
 private:
     RenderEngine();
     ~RenderEngine() = default;
 
     Adafruit_ST7735 _tft;
+    GFXcanvas16 _canvas;
     ToastMessage _toast;
     static SemaphoreHandle_t _spiMutex;
 };

@@ -13,9 +13,14 @@ void MicSensor::init() {
     _i2s.setPins(PIN_I2S_SCK, PIN_I2S_WS, -1, PIN_I2S_SD);
     // Standard 16kHz 16-bit mono
     _i2s.begin(I2S_MODE_STD, I2S_SAMPLE_RATE, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO);
+    _i2s.setTimeout(5); // 5ms maximum timeout to prevent blocking
 }
 
 void MicSensor::update() {
+    if (_i2s.available() < (int)(sizeof(int16_t) * 32)) {
+        return; // Non-blocking: skip if buffer doesn't have enough samples yet
+    }
+
     int16_t samples[I2S_BUFFER_SIZE];
     size_t bytesRead = _i2s.readBytes((char*)samples, sizeof(samples));
     size_t sampleCount = bytesRead / sizeof(int16_t);

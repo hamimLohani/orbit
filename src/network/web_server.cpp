@@ -10,7 +10,7 @@
 WebServer::WebServer() : _server(HTTP_PORT) {}
 
 void WebServer::init() {
-    _fsMounted = LittleFS.begin(true); // Format if mount fails
+    _fsMounted = LittleFS.begin(false); // Do not block with auto-formatting on boot
 
     // Attach WebSocket
     WebSocketServer::getInstance().init(_server);

@@ -115,10 +115,13 @@ void loop() {
     // 2. Update Active App & Background Services
     AppRegistry::getInstance().update(deltaMs);
 
-    // 3. Render Graphics Frame to ST7735
+    // 3. Render Graphics Frame to off-screen buffer
     AppRegistry::getInstance().render(RenderEngine::getInstance());
 
-    // 4. Update RGB Lighting & Indicator LED animations
+    // 4. Flush complete frame to ST7735 in a single SPI burst (zero flicker!)
+    RenderEngine::getInstance().flush();
+
+    // 5. Update RGB Lighting & Indicator LED animations
     RgbController::getInstance().update();
     IndicatorLed::getInstance().update();
 }

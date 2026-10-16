@@ -4,7 +4,8 @@
 SemaphoreHandle_t RenderEngine::_spiMutex = nullptr;
 
 RenderEngine::RenderEngine() 
-    : _tft(&SPI, PIN_TFT_CS, PIN_TFT_DC, PIN_TFT_RST) {
+    : _tft(&SPI, PIN_TFT_CS, PIN_TFT_DC, PIN_TFT_RST),
+      _canvas(SCREEN_WIDTH, SCREEN_HEIGHT) {
     if (!_spiMutex) {
         _spiMutex = xSemaphoreCreateMutex();
     }
@@ -18,7 +19,7 @@ SemaphoreHandle_t RenderEngine::getSpiMutex() {
 }
 
 void RenderEngine::init() {
-    // Backlight PWM pin
+    // Backlight PWM pin - start solid ON
     pinMode(PIN_TFT_BL, OUTPUT);
     digitalWrite(PIN_TFT_BL, HIGH);
 
@@ -36,102 +37,73 @@ void RenderEngine::init() {
         xSemaphoreGive(getSpiMutex());
     }
 
-    setBacklight(80);
+    _canvas.fillScreen(COLOR_VOID_DARK);
+    setBacklight(100);
 }
 
 void RenderEngine::setBacklight(uint8_t brightnessPercent) {
     brightnessPercent = constrain(brightnessPercent, 0, 100);
-    // 0-255 PWM duty
-    uint8_t duty = map(brightnessPercent, 0, 100, 0, 255);
-    analogWrite(PIN_TFT_BL, duty);
+    if (brightnessPercent >= 99) {
+        digitalWrite(PIN_TFT_BL, HIGH);
+    } else if (brightnessPercent == 0) {
+        digitalWrite(PIN_TFT_BL, LOW);
+    } else {
+        uint8_t duty = map(brightnessPercent, 0, 100, 0, 255);
+        analogWrite(PIN_TFT_BL, duty);
+    }
 }
 
-void RenderEngine::fillScreen(uint16_t color) {
+void RenderEngine::flush() {
     if (xSemaphoreTake(getSpiMutex(), pdMS_TO_TICKS(50)) == pdTRUE) {
-        digitalWrite(PIN_SD_CS, HIGH);
-        _tft.fillScreen(color);
+        digitalWrite(PIN_SD_CS, HIGH); // Ensure SD is deselected
+        _tft.drawRGBBitmap(0, 0, _canvas.getBuffer(), SCREEN_WIDTH, SCREEN_HEIGHT);
         xSemaphoreGive(getSpiMutex());
     }
+}
+
+// In-Memory Double-Buffered Primitives (Fast & Flicker-Free)
+void RenderEngine::fillScreen(uint16_t color) {
+    _canvas.fillScreen(color);
 }
 
 void RenderEngine::drawPixel(int16_t x, int16_t y, uint16_t color) {
-    if (xSemaphoreTake(getSpiMutex(), pdMS_TO_TICKS(10)) == pdTRUE) {
-        digitalWrite(PIN_SD_CS, HIGH);
-        _tft.drawPixel(x, y, color);
-        xSemaphoreGive(getSpiMutex());
-    }
+    _canvas.drawPixel(x, y, color);
 }
 
 void RenderEngine::drawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color) {
-    if (xSemaphoreTake(getSpiMutex(), pdMS_TO_TICKS(15)) == pdTRUE) {
-        digitalWrite(PIN_SD_CS, HIGH);
-        _tft.drawLine(x0, y0, x1, y1, color);
-        xSemaphoreGive(getSpiMutex());
-    }
+    _canvas.drawLine(x0, y0, x1, y1, color);
 }
 
 void RenderEngine::drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) {
-    if (xSemaphoreTake(getSpiMutex(), pdMS_TO_TICKS(15)) == pdTRUE) {
-        digitalWrite(PIN_SD_CS, HIGH);
-        _tft.drawFastHLine(x, y, w, color);
-        xSemaphoreGive(getSpiMutex());
-    }
+    _canvas.drawFastHLine(x, y, w, color);
 }
 
 void RenderEngine::drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) {
-    if (xSemaphoreTake(getSpiMutex(), pdMS_TO_TICKS(15)) == pdTRUE) {
-        digitalWrite(PIN_SD_CS, HIGH);
-        _tft.drawFastVLine(x, y, h, color);
-        xSemaphoreGive(getSpiMutex());
-    }
+    _canvas.drawFastVLine(x, y, h, color);
 }
 
 void RenderEngine::drawRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) {
-    if (xSemaphoreTake(getSpiMutex(), pdMS_TO_TICKS(15)) == pdTRUE) {
-        digitalWrite(PIN_SD_CS, HIGH);
-        _tft.drawRect(x, y, w, h, color);
-        xSemaphoreGive(getSpiMutex());
-    }
+    _canvas.drawRect(x, y, w, h, color);
 }
 
 void RenderEngine::fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) {
-    if (xSemaphoreTake(getSpiMutex(), pdMS_TO_TICKS(15)) == pdTRUE) {
-        digitalWrite(PIN_SD_CS, HIGH);
-        _tft.fillRect(x, y, w, h, color);
-        xSemaphoreGive(getSpiMutex());
-    }
+    _canvas.fillRect(x, y, w, h, color);
 }
 
 void RenderEngine::drawRoundRect(int16_t x, int16_t y, int16_t w, int16_t h, int16_t r, uint16_t color) {
-    if (xSemaphoreTake(getSpiMutex(), pdMS_TO_TICKS(15)) == pdTRUE) {
-        digitalWrite(PIN_SD_CS, HIGH);
-        _tft.drawRoundRect(x, y, w, h, r, color);
-        xSemaphoreGive(getSpiMutex());
-    }
+    _canvas.drawRoundRect(x, y, w, h, r, color);
 }
 
 void RenderEngine::fillRoundRect(int16_t x, int16_t y, int16_t w, int16_t h, int16_t r, uint16_t color) {
-    if (xSemaphoreTake(getSpiMutex(), pdMS_TO_TICKS(15)) == pdTRUE) {
-        digitalWrite(PIN_SD_CS, HIGH);
-        _tft.fillRoundRect(x, y, w, h, r, color);
-        xSemaphoreGive(getSpiMutex());
-    }
+    _canvas.fillRoundRect(x, y, w, h, r, color);
 }
 
 void RenderEngine::drawCircle(int16_t x0, int16_t y0, int16_t r, uint16_t color) {
-    if (xSemaphoreTake(getSpiMutex(), pdMS_TO_TICKS(15)) == pdTRUE) {
-        digitalWrite(PIN_SD_CS, HIGH);
-        _tft.drawCircle(x0, y0, r, color);
-        xSemaphoreGive(getSpiMutex());
-    }
+    _canvas.drawCircle(x0, y0, r, color);
 }
 
 void RenderEngine::fillCircle(int16_t x0, int16_t y0, int16_t r, uint16_t color) {
-    if (xSemaphoreTake(getSpiMutex(), pdMS_TO_TICKS(15)) == pdTRUE) {
-        digitalWrite(PIN_SD_CS, HIGH);
-        _tft.fillCircle(x0, y0, r, color);
-        xSemaphoreGive(getSpiMutex());
-    }
+    _canvas.fillCircle(x0, y0, r, color);
 }
 
 void RenderEngine::drawCard(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t bg, uint16_t border) {
@@ -165,11 +137,7 @@ void RenderEngine::drawSparkline(int16_t x, int16_t y, int16_t w, int16_t h, con
 
 void RenderEngine::drawBitmap16x16(int16_t x, int16_t y, const uint8_t* bitmap, uint16_t color, uint16_t bg) {
     if (!bitmap) return;
-    if (xSemaphoreTake(getSpiMutex(), pdMS_TO_TICKS(15)) == pdTRUE) {
-        digitalWrite(PIN_SD_CS, HIGH);
-        _tft.drawBitmap(x, y, bitmap, 16, 16, color, bg);
-        xSemaphoreGive(getSpiMutex());
-    }
+    _canvas.drawBitmap(x, y, bitmap, 16, 16, color, bg);
 }
 
 void RenderEngine::drawIcon(int16_t x, int16_t y, uint8_t iconIndex, uint16_t color, uint16_t bg) {
@@ -181,14 +149,10 @@ void RenderEngine::drawIcon(int16_t x, int16_t y, uint8_t iconIndex, uint16_t co
 
 void RenderEngine::drawText(int16_t x, int16_t y, const char* text, uint16_t color, uint8_t size) {
     if (!text) return;
-    if (xSemaphoreTake(getSpiMutex(), pdMS_TO_TICKS(15)) == pdTRUE) {
-        digitalWrite(PIN_SD_CS, HIGH);
-        _tft.setTextColor(color);
-        _tft.setTextSize(size);
-        _tft.setCursor(x, y);
-        _tft.print(text);
-        xSemaphoreGive(getSpiMutex());
-    }
+    _canvas.setTextColor(color);
+    _canvas.setTextSize(size);
+    _canvas.setCursor(x, y);
+    _canvas.print(text);
 }
 
 void RenderEngine::drawTextCentered(int16_t xCenter, int16_t y, const char* text, uint16_t color, uint8_t size) {
@@ -208,14 +172,11 @@ void RenderEngine::drawTextRight(int16_t xRight, int16_t y, const char* text, ui
 }
 
 void RenderEngine::drawStatusBar(const char* timeStr, bool wifiConnected, int8_t rssi, uint8_t activeIcon) {
-    // Fill status bar area
     fillRect(0, 0, SCREEN_WIDTH, STATUS_BAR_HEIGHT, COLOR_VOID_DARK);
     drawFastHLine(0, STATUS_BAR_HEIGHT - 1, SCREEN_WIDTH, COLOR_SLATE_BORDER);
 
-    // Mini active app indicator (small 2x2 dot)
     fillCircle(4, 6, 2, COLOR_NEON_CYAN);
 
-    // Clock in center
     if (timeStr && strlen(timeStr) >= 5) {
         char shortTime[6];
         strncpy(shortTime, timeStr, 5);
@@ -223,7 +184,6 @@ void RenderEngine::drawStatusBar(const char* timeStr, bool wifiConnected, int8_t
         drawTextCentered(64, 3, shortTime, COLOR_TEXT_LIGHT, 1);
     }
 
-    // WiFi signal bars on right
     int16_t wx = SCREEN_WIDTH - 16;
     int16_t wy = 9;
     if (wifiConnected) {
@@ -232,7 +192,6 @@ void RenderEngine::drawStatusBar(const char* timeStr, bool wifiConnected, int8_t
         drawFastVLine(wx + 3, wy - 4, 4, (rssi > -80) ? wColor : COLOR_TEXT_DARK);
         drawFastVLine(wx + 6, wy - 6, 6, (rssi > -65) ? wColor : COLOR_TEXT_DARK);
     } else {
-        // Red 'X' for disconnected
         drawText(wx, 3, "x", COLOR_NEON_RED, 1);
     }
 }
@@ -263,7 +222,6 @@ void RenderEngine::renderToastOverlay() {
         return;
     }
 
-    // Slide down toast window at top of screen
     fillRect(4, 2, SCREEN_WIDTH - 8, 28, COLOR_SLATE_MID);
     drawRect(4, 2, SCREEN_WIDTH - 8, 28, _toast.color);
     drawFastHLine(6, 14, SCREEN_WIDTH - 12, COLOR_SLATE_BORDER);
