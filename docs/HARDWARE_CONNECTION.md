@@ -90,11 +90,11 @@ All GPIO assignments below match [`include/config.h`](../include/config.h) exact
 | **Indicator LED** | **Anode (+)** | **GPIO 2** | 🔴 Red | 3.3V | Connect through **220Ω or 330Ω resistor** |
 | | **Cathode (-)**| **GND** | ⚫ Black | 0V | Short leg to GND |
 | **WS2812 RGB** | **Built-in** | **GPIO 48** | — | 3.3V | Built into ESP32-S3 DevKit boards |
-| **5× Buttons** | **BTN_UP** | **GPIO 1** | Blue | 3.3V | Up Navigation / Lander thruster (active LOW to GND) |
-| *(Active LOW)* | **BTN_DOWN** | **GPIO 3** | Green | 3.3V | Down Navigation / Lander drift invert (active LOW to GND) |
-| | **BTN_LEFT** | **GPIO 17** | Orange | 3.3V | Left Navigation / Steer left / Dim (active LOW to GND) |
-| | **BTN_RIGHT**| **GPIO 18** | Yellow | 3.3V | Right Navigation / Steer right / Brighten (active LOW to GND) |
-| | **BTN_ENTER**| **GPIO 16** | Purple | 3.3V | Tap: Enter/Select \| Hold 0.5s: Back \| Hold 2s: Home |
+| **5× Buttons** | **BTN_UP** | **GPIO 1** | 🔵 Blue | GND | Directional UP / Thrust (Active LOW to GND) |
+| *(Active LOW)* | **BTN_DOWN** | **GPIO 3** | 🟢 Green | GND | Directional DOWN / Drift reverse (Active LOW to GND) |
+| | **BTN_LEFT** | **GPIO 17** | 🟠 Orange | GND | Directional LEFT / Steer left / Dim (Active LOW to GND) |
+| | **BTN_RIGHT**| **GPIO 18** | 🟡 Yellow | GND | Directional RIGHT / Steer right / Brighten (Active LOW to GND) |
+| | **BTN_ENTER**| **GPIO 16** | 🟣 Purple | GND | Tap: Enter \| Hold 0.5s: Back \| Hold 2.0s: Home |
 
 ---
 
@@ -129,9 +129,9 @@ All GPIO assignments below match [`include/config.h`](../include/config.h) exact
 
 ---
 
-## 3. Detailed Wiring Schematics (Audio, Sensors, Buttons)
+## 4. Detailed Wiring Schematics (Audio, Sensors, Buttons)
 
-### 3.1 INMP441 I2S Digital MEMS Microphone
+### 4.1 INMP441 I2S Digital MEMS Microphone
 
 The INMP441 delivers 24-bit studio-grade digital audio straight to the ESP32-S3 over I2S DMA.
 
@@ -156,7 +156,7 @@ The INMP441 delivers 24-bit studio-grade digital audio straight to the ESP32-S3 
 
 ---
 
-### 3.2 DHT11 Environmental Sensor
+### 4.2 DHT11 Environmental Sensor
 
 ```
           +------------------+
@@ -178,7 +178,7 @@ The INMP441 delivers 24-bit studio-grade digital audio straight to the ESP32-S3 
 
 ---
 
-### 3.3 Dedicated Indicator Alert LED
+### 4.3 Dedicated Indicator Alert LED
 
 ```
  ESP32 GPIO 2 ----[ 220Ω Resistor ]----(>| Anode) LED (Cathode |)---- ESP32 GND
@@ -188,35 +188,58 @@ The INMP441 delivers 24-bit studio-grade digital audio straight to the ESP32-S3 
 
 ---
 
-### 3.4 5-Button Navigation Matrix (Active LOW)
+### 4.4 5-Button Navigation Matrix (Active LOW)
 
-All five push buttons utilize the ESP32-S3's internal pull-up resistors (`INPUT_PULLUP`). **No external resistors are required!** Simply wire one terminal of each switch to the GPIO pin and the opposite terminal to GND.
+All five push buttons utilize the ESP32-S3's internal pull-up resistors (`INPUT_PULLUP`). **No external pull-up resistors are required!** Simply wire one terminal of each switch to the designated GPIO pin and the opposite terminal to Common Ground (`GND`).
 
+#### Visual D-Pad & Control Layout Preview
 ```
-   ESP32 GPIO 1  (UP)      ------+
-                                 |
-   ESP32 GPIO 3  (DOWN)    ------+
-                                 |  [ Normally Open Tactile Buttons ]
-   ESP32 GPIO 17 (LEFT)    ------+          o     o
-                                 |          |     |
-   ESP32 GPIO 18 (RIGHT)   ------+          +--[ ]--+------> Common GND Rail
-                                 |
-   ESP32 GPIO 16 (ENTER)   ------+
+                   +-------------------+
+                   |    BTN_UP (G1)    |
+                   +---------+---------+
+                             |
++-------------------+        |        +-------------------+
+|   BTN_LEFT (G17)  | <------+------> |  BTN_RIGHT (G18)  |
++-------------------+        |        +-------------------+
+                             |
+                   +---------+---------+
+                   |   BTN_DOWN (G3)   |
+                   +-------------------+
+
+                   +-------------------+
+                   |   BTN_ENTER(G16)  |
+                   +-------------------+
+            • Short Tap (<0.5s): Select / Open
+            • Hold 0.5s        : Back / Close
+            • Hold 2.0s        : Return Home
+```
+
+#### Electrical Wiring Schematic (Per Button)
+```
+   ESP32-S3 Pin                     Tactile Switch (Active LOW)
+   +------------+                        o     o
+   |   GPIO 1   | (UP)    ---------------|  \  |----+
+   |   GPIO 3   | (DOWN)  ---------------|  \  |----+
+   |   GPIO 17  | (LEFT)  ---------------|  \  |----+
+   |   GPIO 18  | (RIGHT) ---------------|  \  |----+
+   |   GPIO 16  | (ENTER) ---------------|  \  |----+
+   |            |                                   |
+   |    GND     | ----------------------------------+ (Common GND Rail)
+   +------------+
 ```
 
 #### Button Action Map:
-- **UP (GPIO 1)**: Previous app / Value adjust up / Lander thruster
-- **DOWN (GPIO 3)**: Next app / Value adjust down / Lander reverse drift
-- **LEFT (GPIO 17)**: Previous app / Dim backlight or brightness / Lander steer left
-- **RIGHT (GPIO 18)**: Next app / Increase backlight or brightness / Lander steer right
-- **ENTER (GPIO 16)**:
-  - **Short Tap (< 0.5s)**: Select / Enter app / Open carousel (from Home) / Toggle mode / Play/Pause
-  - **Hold 0.5s**: Back to previous screen / Exit carousel
-  - **Hold 2.0s**: Instant return to Home Dashboard from any app or menu
+| Button | GPIO Pin | Short Click (< 0.5s) | Hold 0.5s | Hold 2.0s |
+| :--- | :--- | :--- | :--- | :--- |
+| **`ENTER`** | **GPIO 16** | **Select / Enter / Open Carousel / Play-Pause / Toggle** | **Back to previous screen / Dismiss carousel** | **Instant return to Home Dashboard from anywhere** |
+| **`LEFT`** | **GPIO 17** | **Previous app / Steer left (Lander) / Dim backlight & LED** | Directional auto-repeat (150ms) | — |
+| **`RIGHT`** | **GPIO 18** | **Next app / Steer right (Lander) / Brighten backlight & LED**| Directional auto-repeat (150ms) | — |
+| **`UP`** | **GPIO 1** | **Previous app / Lander thruster / Value adjust up** | Directional auto-repeat (150ms) | — |
+| **`DOWN`** | **GPIO 3** | **Next app / Lander reverse drift / Value adjust down** | Directional auto-repeat (150ms) | — |
 
 ---
 
-## 4. Physical Breadboard Layout Diagram
+## 5. Physical Breadboard Layout Diagram
 
 ```
            +---------------------[ ESP32-S3 ]---------------------+
@@ -237,18 +260,19 @@ All five push buttons utilize the ESP32-S3's internal pull-up resistors (`INPUT_
            | [GPIO 12] ------------> SPI SCK  (TFT + SD Card)     |
            | [GPIO 13] ------------> SPI MISO (SD Card only)      |
            | [GPIO 14] ------------> ST7735 RESET                 |
-           | [GPIO 16] ------------> BTN_ENTER (Enter/Back/Home)  |
+           | [GPIO 16] ------------> BTN_ENTER -------------(GND) |
            | [GPIO 17] ------------> BTN_LEFT --------------(GND) |
            | [GPIO 18] ------------> BTN_RIGHT -------------(GND) |
            | [GPIO 21] ------------> ST7735 BLK (Backlight)       |
            | [GPIO 47] ------------> MicroSD CS                   |
            | [GPIO 48] ------------> Built-in WS2812 RGB LED      |
            +------------------------------------------------------+
+           * BTN_ENTER (GPIO 16): Tap = Enter | 0.5s Hold = Back | 2.0s Hold = Home
 ```
 
 ---
 
-## 5. Hardware Assembly Checklist & Sanity Testing
+## 6. Hardware Assembly Checklist & Sanity Testing
 
 Before plugging in the USB cable, perform this 5-point safety check:
 
@@ -260,7 +284,7 @@ Before plugging in the USB cable, perform this 5-point safety check:
 
 ---
 
-## 6. Troubleshooting Hardware Issues
+## 7. Troubleshooting Hardware Issues
 
 | Symptom | Probable Cause | Quick Fix |
 | :--- | :--- | :--- |

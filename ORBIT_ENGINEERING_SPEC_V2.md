@@ -64,11 +64,11 @@ All pin assignments are strictly centralized in `include/config.h`. No hardcoded
 #define PIN_INDICATOR_LED     2    // High-visibility alert LED
 
 // 5-Button Navigation Matrix (Active LOW with internal pullups)
-#define PIN_BTN_UP            1
-#define PIN_BTN_DOWN          3
-#define PIN_BTN_SELECT        18
-#define PIN_BTN_BACK          17
-#define PIN_BTN_ACTION        16   // PTT / Quick Action
+#define PIN_BTN_UP            1    // Directional UP
+#define PIN_BTN_DOWN          3    // Directional DOWN
+#define PIN_BTN_LEFT          17   // Directional LEFT (was Back)
+#define PIN_BTN_RIGHT         18   // Directional RIGHT (was Select)
+#define PIN_BTN_ENTER         16   // Enter / Action (.5s=Back, 2.0s=Home)
 ```
 
 ### 2.3 SPI Bus Arbitration Protocol (ST7735 & MicroSD)
@@ -245,7 +245,7 @@ REGISTER_APP(MyCustomApp);
 
 ### 6.3 Dynamic Carousel Navigation
 
-The `AppRegistry` maintains the active app list, manages memory, executes smooth horizontal card transitions, and routes button presses to the current active app. Pressing `BTN_BACK` from within any app cleanly transitions back to the Home Dashboard.
+The `AppRegistry` maintains the active app list, manages memory, executes smooth horizontal card transitions, and routes button presses to the current active app. Holding `BTN_ENTER` for 0.5s cleanly transitions back to the previous screen or launcher; holding `BTN_ENTER` for 2.0s returns directly to the Home Dashboard from anywhere. Directional buttons `BTN_LEFT` and `BTN_RIGHT` navigate between apps in the carousel.
 
 ---
 

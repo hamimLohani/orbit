@@ -46,11 +46,11 @@ All pin assignments are centralized in [`include/config.h`](include/config.h):
 | **Sensors** | DHT11 Data | GPIO 7 | Single-wire with 10k pullup |
 | **Lighting** | WS2812 RGB | GPIO 48 | Built-in ESP32-S3 Addressable RGB |
 | | Indicator LED | GPIO 2 | Dedicated Alert Beacon LED |
-| **Buttons** | BTN_UP | GPIO 1 | Active LOW (Internal pull-up) |
-| | BTN_DOWN | GPIO 3 | Active LOW (Internal pull-up) |
-| | BTN_SELECT | GPIO 18 | Active LOW (Internal pull-up) |
-| | BTN_BACK | GPIO 17 | Active LOW (Internal pull-up) |
-| | BTN_ACTION | GPIO 16 | Quick Action / Voice Memo PTT |
+| **Buttons** | BTN_UP | GPIO 1 | Directional UP / Thrust (Active LOW to GND) |
+| | BTN_DOWN | GPIO 3 | Directional DOWN / Drift reverse (Active LOW to GND) |
+| | BTN_LEFT | GPIO 17 | Directional LEFT / Steer left / Dim (Active LOW to GND) |
+| | BTN_RIGHT | GPIO 18 | Directional RIGHT / Steer right / Brighten (Active LOW to GND) |
+| | BTN_ENTER | GPIO 16 | Tap: Enter | Hold 0.5s: Back | Hold 2.0s: Home |
 
 ---
 
