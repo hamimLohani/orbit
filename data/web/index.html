@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ORBIT OS — Ambient Companion Dashboard</title>
+  <meta name="description" content="Live companion dashboard and telemetry center for ORBIT ESP32-S3 ambient sensing embedded OS">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Background Glow & Stars -->
+  <div class="ambient-glow glow-cyan"></div>
+  <div class="ambient-glow glow-purple"></div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="brand">
+        <div class="brand-orbit-logo">
+          <div class="ring outer-ring"></div>
+          <div class="ring inner-ring"></div>
+          <div class="core-dot"></div>
+        </div>
+        <div class="brand-text">
+          <h1>ORBIT <span class="badge-v2">v2.0</span></h1>
+          <p class="tagline">Ambient Sensing Companion OS</p>
+        </div>
+      </div>
+
+      <div class="header-status">
+        <div class="status-pill" id="connection-pill">
+          <span class="status-dot disconnected" id="ws-dot"></span>
+          <span id="ws-status-text">Connecting...</span>
+        </div>
+        <button class="btn btn-secondary btn-icon" id="btn-ping" title="Find My Device">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+          <span>Find Device</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-tab="dashboard">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        <span>Telemetry HUD</span>
+      </button>
+      <button class="nav-tab" data-tab="apps">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>
+        <span>App Launcher</span>
+      </button>
+      <button class="nav-tab" data-tab="lighting">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+        <span>RGB Studio</span>
+      </button>
+      <button class="nav-tab" data-tab="memos">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+        <span>Voice Memos & AI</span>
+      </button>
+      <button class="nav-tab" data-tab="studio">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+        <span>Wallpaper Studio</span>
+      </button>
+      <button class="nav-tab" data-tab="alerts">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        <span>Push Toast</span>
+      </button>
+    </nav>
+
+    <!-- TAB 1: TELEMETRY HUD -->
+    <main class="tab-content active" id="tab-dashboard">
+      <!-- Top Metrics Grid -->
+      <section class="metrics-grid">
+        <div class="metric-card card-cyan">
+          <div class="metric-header">
+            <span class="metric-title">Temperature</span>
+            <span class="metric-icon">🌡️</span>
+          </div>
+          <div class="metric-value" id="val-temp">--°C</div>
+          <div class="metric-sub" id="val-heat-index">Heat Index: --°C</div>
+        </div>
+
+        <div class="metric-card card-mint">
+          <div class="metric-header">
+            <span class="metric-title">Humidity</span>
+            <span class="metric-icon">💧</span>
+          </div>
+          <div class="metric-value" id="val-hum">--%</div>
+          <div class="metric-sub">Relative Humidity (DHT11)</div>
+        </div>
+
+        <div class="metric-card card-purple">
+          <div class="metric-header">
+            <span class="metric-title">Ambient Noise</span>
+            <span class="metric-icon">🎙️</span>
+          </div>
+          <div class="metric-value" id="val-mic">-- dB</div>
+          <div class="metric-sub" id="val-noise-state">Status: Normal</div>
+        </div>
+
+        <div class="metric-card card-amber">
+          <div class="metric-header">
+            <span class="metric-title">Active Screen</span>
+            <span class="metric-icon">📱</span>
+          </div>
+          <div class="metric-value" id="val-active-app" style="text-transform: capitalize;">Home</div>
+          <div class="metric-sub" id="val-time">Time: --:--:--</div>
+        </div>
+      </section>
+
+      <!-- Real-Time Audio Spectrum Canvas & Visualizer -->
+      <section class="panel-section">
+        <div class="panel-header">
+          <div class="panel-title-group">
+            <h3>INMP441 Real-Time 16-Band DSP Audio Spectrum</h3>
+            <span class="badge-pill">I2S DMA Continuous Stream</span>
+          </div>
+          <div class="live-indicator">
+            <span class="pulse-dot"></span>
+            <span>LIVE 25Hz</span>
+          </div>
+        </div>
+        <div class="spectrum-container">
+          <canvas id="spectrum-canvas" width="800" height="180"></canvas>
+        </div>
+      </section>
+
+      <!-- Device Stats Grid -->
+      <section class="device-stats-grid">
+        <div class="info-card">
+          <h4>Wi-Fi & Network</h4>
+          <div class="info-row"><span>IP Address:</span><strong id="val-ip">0.0.0.0</strong></div>
+          <div class="info-row"><span>mDNS Host:</span><strong>http://orbit.local</strong></div>
+          <div class="info-row"><span>Signal RSSI:</span><strong id="val-rssi">-- dBm</strong></div>
+        </div>
+        <div class="info-card">
+          <h4>System Performance</h4>
+          <div class="info-row"><span>Free Heap:</span><strong id="val-heap">-- KB</strong></div>
+          <div class="info-row"><span>Device Uptime:</span><strong id="val-uptime">--</strong></div>
+          <div class="info-row"><span>Display Driver:</span><strong>ST7735 128x160</strong></div>
+        </div>
+        <div class="info-card">
+          <h4>Astral Telemetry</h4>
+          <div class="info-row"><span>Lunar Phase:</span><strong id="val-moon">--</strong></div>
+          <div class="info-row"><span>ISS Orbit:</span><strong>420 km Altitude</strong></div>
+          <div class="info-row"><span>Platform:</span><strong>ESP32-S3 Dual-Core</strong></div>
+        </div>
+      </section>
+    </main>
+
+    <!-- TAB 2: APP LAUNCHER -->
+    <section class="tab-content" id="tab-apps">
+      <div class="panel-section">
+        <div class="panel-header">
+          <div>
+            <h3>Remote App Launcher</h3>
+            <p class="section-desc">Tap any app card to seamlessly switch screens on the device.</p>
+          </div>
+        </div>
+        <div class="apps-grid" id="apps-container">
+          <!-- Dynamically populated or default fallback -->
+          <div class="app-card active" data-app="home">
+            <div class="app-card-icon">🏠</div>
+            <div class="app-card-title">Home</div>
+            <div class="app-card-desc">Live dashboard & orbit ring</div>
+          </div>
+          <div class="app-card" data-app="aura">
+            <div class="app-card-icon">👾</div>
+            <div class="app-card-title">Aura</div>
+            <div class="app-card-desc">Interactive virtual companion</div>
+          </div>
+          <div class="app-card" data-app="spectrum">
+            <div class="app-card-icon">📊</div>
+            <div class="app-card-title">Spectrum</div>
+            <div class="app-card-desc">16-Band audio equalizer</div>
+          </div>
+          <div class="app-card" data-app="climate">
+            <div class="app-card-icon">🌡️</div>
+            <div class="app-card-title">Climate</div>
+            <div class="app-card-desc">DHT11 sparkline & heat index</div>
+          </div>
+          <div class="app-card" data-app="focus">
+            <div class="app-card-icon">⏱️</div>
+            <div class="app-card-title">Focus</div>
+            <div class="app-card-desc">Pomodoro & noise sentinel</div>
+          </div>
+          <div class="app-card" data-app="recorder">
+            <div class="app-card-icon">🎙️</div>
+            <div class="app-card-title">Voice Memo</div>
+            <div class="app-card-desc">WAV capture on SD card</div>
+          </div>
+          <div class="app-card" data-app="astro">
+            <div class="app-card-icon">🪐</div>
+            <div class="app-card-title">Astro</div>
+            <div class="app-card-desc">Moon phase & space telemetry</div>
+          </div>
+          <div class="app-card" data-app="signal">
+            <div class="app-card-icon">🔔</div>
+            <div class="app-card-title">Signal</div>
+            <div class="app-card-desc">Alert beacon & webhooks</div>
+          </div>
+          <div class="app-card" data-app="lights">
+            <div class="app-card-icon">💡</div>
+            <div class="app-card-title">Lights</div>
+            <div class="app-card-desc">Ambient RGB lighting</div>
+          </div>
+          <div class="app-card" data-app="lander">
+            <div class="app-card-icon">🚀</div>
+            <div class="app-card-title">Lander</div>
+            <div class="app-card-desc">Lunar lander physics arcade</div>
+          </div>
+          <div class="app-card" data-app="network">
+            <div class="app-card-icon">📶</div>
+            <div class="app-card-title">Network</div>
+            <div class="app-card-desc">Wi-Fi & connection status</div>
+          </div>
+          <div class="app-card" data-app="system">
+            <div class="app-card-icon">⚙️</div>
+            <div class="app-card-title">System</div>
+            <div class="app-card-desc">Backlight & system settings</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: RGB STUDIO -->
+    <section class="tab-content" id="tab-lighting">
+      <div class="panel-section">
+        <div class="panel-header">
+          <div>
+            <h3>WS2812 Addressable RGB Studio</h3>
+            <p class="section-desc">Fine-tune the ambient lighting modes, effects, and palettes.</p>
+          </div>
+        </div>
+
+        <div class="rgb-controls-grid">
+          <!-- Modes -->
+          <div class="control-box">
+            <h4>Lighting Modes</h4>
+            <div class="mode-buttons-grid">
+              <button class="mode-btn active" data-mode="1">Ambient (Climate)</button>
+              <button class="mode-btn" data-mode="2">Disco (Sound-Reactive)</button>
+              <button class="mode-btn" data-mode="3">Sinusoidal Breathe</button>
+              <button class="mode-btn" data-mode="4">Rainbow Cycle</button>
+              <button class="mode-btn" data-mode="5">Solid Custom</button>
+              <button class="mode-btn" data-mode="0">Turn Off</button>
+            </div>
+          </div>
+
+          <!-- Color Picker & Swatches -->
+          <div class="control-box">
+            <h4>Color Customizer</h4>
+            <div class="color-picker-row">
+              <input type="color" id="rgb-color-input" value="#00ffff" class="color-input">
+              <div class="color-swatches">
+                <span class="swatch" style="background:#00ffff" data-color="#00ffff"></span>
+                <span class="swatch" style="background:#b81fdf" data-color="#b81fdf"></span>
+                <span class="swatch" style="background:#2fe89f" data-color="#2fe89f"></span>
+                <span class="swatch" style="background:#fd2020" data-color="#fd2020"></span>
+                <span class="swatch" style="background:#fea000" data-color="#fea000"></span>
+                <span class="swatch" style="background:#ffffff" data-color="#ffffff"></span>
+              </div>
+            </div>
+
+            <div class="slider-group" style="margin-top: 24px;">
+              <div class="slider-header">
+                <label for="display-bright-slider">Display Backlight Brightness</label>
+                <span id="display-bright-val">80%</span>
+              </div>
+              <input type="range" id="display-bright-slider" min="0" max="100" value="80" class="styled-slider">
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: VOICE MEMOS & AI -->
+    <section class="tab-content" id="tab-memos">
+      <div class="panel-section">
+        <div class="panel-header">
+          <div>
+            <h3>Hardware Voice Memos & AI Assistant Pipeline</h3>
+            <p class="section-desc">Play back recordings stored on the SD card or trigger Whisper AI transcription.</p>
+          </div>
+          <div class="memos-actions">
+            <button class="btn btn-primary btn-record" id="btn-toggle-rec">
+              <span class="rec-dot"></span>
+              <span id="rec-btn-text">Record Voice Memo</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="memos-list" id="memos-container">
+          <div class="empty-state">
+            <p>Loading voice memos from SD card...</p>
+          </div>
+        </div>
+
+        <!-- AI Transcription Box -->
+        <div class="ai-box">
+          <div class="ai-box-header">
+            <h4>🤖 AI Transcription & Action Item Extractor</h4>
+            <span class="badge-pill">Whisper / Gemini Ready</span>
+          </div>
+          <textarea id="ai-transcript" class="styled-textarea" placeholder="Select a recording or speak into ORBIT to generate real-time AI transcriptions and automated action items..." rows="4"></textarea>
+          <div class="ai-actions">
+            <button class="btn btn-secondary" id="btn-transcribe-demo">Generate AI Summary Demo</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: WALLPAPER STUDIO -->
+    <section class="tab-content" id="tab-studio">
+      <div class="panel-section">
+        <div class="panel-header">
+          <div>
+            <h3>ST7735 Image & Wallpaper Studio</h3>
+            <p class="section-desc">Upload any image. Browser automatically resizes, dithers, and converts to 128x160 RGB565 for the TFT display.</p>
+          </div>
+        </div>
+
+        <div class="studio-grid">
+          <div class="dropzone" id="image-dropzone">
+            <input type="file" id="image-file-input" accept="image/*" style="display:none">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            <p>Drag & Drop an image here or <strong style="color:var(--color-neon-cyan);cursor:pointer">Browse</strong></p>
+            <span class="file-hint">PNG, JPEG, WEBP supported</span>
+          </div>
+
+          <div class="preview-box">
+            <h4>128x160 TFT Display Preview</h4>
+            <div class="tft-bezel">
+              <canvas id="preview-canvas" width="128" height="160"></canvas>
+            </div>
+            <button class="btn btn-primary" id="btn-send-wallpaper" disabled>Flash to SD Card</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 6: PUSH TOAST ALERTS -->
+    <section class="tab-content" id="tab-alerts">
+      <div class="panel-section">
+        <div class="panel-header">
+          <div>
+            <h3>Global Screen Toast Transmitter</h3>
+            <p class="section-desc">Push high-priority alert banners and chimes to the ORBIT display over any active app.</p>
+          </div>
+        </div>
+
+        <form id="toast-form" class="toast-form">
+          <div class="form-group">
+            <label for="toast-title">Notification Title</label>
+            <input type="text" id="toast-title" class="styled-input" placeholder="e.g. Design Meeting" value="Meeting in 5m" required>
+          </div>
+          <div class="form-group">
+            <label for="toast-body">Message Body</label>
+            <input type="text" id="toast-body" class="styled-input" placeholder="e.g. Sprint Review on Zoom" value="Sprint Review with Product Team" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="toast-duration">Duration (ms)</label>
+              <input type="number" id="toast-duration" class="styled-input" value="4000" min="1000" max="15000">
+            </div>
+            <div class="form-group">
+              <label for="toast-color">Border & Chime Color</label>
+              <input type="color" id="toast-color" class="color-input" value="#00ffff">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" style="margin-top:12px">Transmit Toast Notification</button>
+        </form>
+      </div>
+    </section>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
