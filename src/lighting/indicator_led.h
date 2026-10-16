@@ -32,7 +32,7 @@ private:
     IndicatorLed() = default;
     ~IndicatorLed() = default;
 
-    IndicatorPattern _pattern = LED_HEARTBEAT;
+    IndicatorPattern _pattern = LED_OFF;
     bool _isFlashing = false;
     uint32_t _flashExpiry = 0;
 };

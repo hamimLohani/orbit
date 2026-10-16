@@ -149,7 +149,7 @@ void CompanionApp::renderEyes(RenderEngine& gfx, int16_t cx, int16_t cy) {
 }
 
 bool CompanionApp::onButtonEvent(const ButtonEvent& evt) {
-    if (evt.type == BUTTON_CLICK && evt.button == BTN_ID_SELECT) {
+    if (evt.type == BUTTON_CLICK && (evt.button == BTN_ID_ENTER || evt.button == BTN_ID_SELECT)) {
         _petCounter++;
         _mood = MOOD_HAPPY;
         RgbController::getInstance().triggerFlash(0xFF69B4, 300); // Pink love flash

@@ -18,11 +18,24 @@ void AppRegistry::registerApp(AppBase* app) {
 }
 
 void AppRegistry::initAll() {
+    // Ensure "home" dashboard app is always at index 0 regardless of link order
+    for (size_t i = 0; i < _apps.size(); ++i) {
+        if (strcmp(_apps[i]->getMetadata().id, "home") == 0) {
+            if (i != 0) {
+                AppBase* home = _apps[i];
+                _apps.erase(_apps.begin() + i);
+                _apps.insert(_apps.begin(), home);
+            }
+            break;
+        }
+    }
+
     for (auto* app : _apps) {
         app->onInit();
     }
     if (!_apps.empty()) {
         _activeIndex = 0;
+        _inCarousel = false;
         _apps[0]->onEnter();
         SharedData::getInstance().setSystemStatus(ESP.getFreeHeap(), millis() / 1000, _apps[0]->getMetadata().id);
     }
@@ -104,58 +117,62 @@ void AppRegistry::renderCarousel(RenderEngine& gfx) {
     gfx.drawTextCentered(64, cardY + 54, idxBuf, COLOR_TEXT_MUTED, 1);
 
     // Navigation Hint at bottom
-    gfx.drawTextCentered(64, SCREEN_HEIGHT - 12, "< UP / DN >  SELECT", COLOR_TEXT_MUTED, 1);
+    gfx.drawTextCentered(64, SCREEN_HEIGHT - 12, "< L / R >  ENTER: Select", COLOR_TEXT_MUTED, 1);
 }
 
 void AppRegistry::handleButtonEvent(const ButtonEvent& evt) {
-    // Global PTT Button: Quick Action long-press records voice memo anywhere
-    if (evt.button == BTN_ID_ACTION) {
-        if (evt.type == BUTTON_CLICK) {
-            // Toggle Voice Recording
-            if (MicSensor::getInstance().isRecording()) {
-                MicSensor::getInstance().stopRecording();
-            } else {
-                MicSensor::getInstance().startRecording();
-            }
-            return;
-        }
+    // 1. Threshold: 2.0s Hold on ENTER -> Direct return to HOME
+    if (evt.button == BTN_ID_ENTER && evt.type == BUTTON_HOLD_2S) {
+        returnHome();
+        _inCarousel = false;
+        RenderEngine::getInstance().showToast("HOME", "Returned to Home", COLOR_NEON_CYAN, 1200);
+        return;
     }
 
-    // Carousel handling
+    // 2. Threshold: 0.5s Hold on ENTER -> Go BACK
+    if (evt.button == BTN_ID_ENTER && evt.type == BUTTON_HOLD_05S) {
+        if (_inCarousel) {
+            _inCarousel = false;
+        } else if (_activeIndex != 0) {
+            returnHome();
+        } else {
+            toggleCarousel();
+        }
+        RenderEngine::getInstance().showToast("BACK", "Previous Screen", COLOR_TEXT_MUTED, 1000);
+        return;
+    }
+
+    // 3. Carousel Mode Navigation
     if (_inCarousel) {
-        if (evt.type == BUTTON_CLICK) {
-            if (evt.button == BTN_ID_UP) {
+        if (evt.type == BUTTON_CLICK || evt.type == BUTTON_REPEAT) {
+            if (evt.button == BTN_ID_UP || evt.button == BTN_ID_LEFT) {
                 if (_carouselIndex > 0) _carouselIndex--;
                 else _carouselIndex = _apps.size() - 1;
-            } else if (evt.button == BTN_ID_DOWN) {
+            } else if (evt.button == BTN_ID_DOWN || evt.button == BTN_ID_RIGHT) {
                 _carouselIndex = (_carouselIndex + 1) % _apps.size();
-            } else if (evt.button == BTN_ID_SELECT) {
+            } else if (evt.button == BTN_ID_ENTER) {
                 switchApp(_carouselIndex);
-                _inCarousel = false;
-            } else if (evt.button == BTN_ID_BACK) {
                 _inCarousel = false;
             }
         }
         return;
     }
 
-    // If inside an app, let the app consume the event first
+    // 4. Active App Input Delegation
     if (_activeIndex < _apps.size()) {
         if (_apps[_activeIndex]->onButtonEvent(evt)) {
-            return; // App handled it
+            return; // App consumed the event
         }
     }
 
-    // Default global navigation if app didn't consume it
+    // 5. Default Navigation on Home Dashboard
     if (evt.type == BUTTON_CLICK) {
-        if (evt.button == BTN_ID_BACK) {
-            if (_activeIndex != 0) {
-                returnHome(); // Return to Home dashboard
-            } else {
-                toggleCarousel(); // On Home, BACK opens Carousel
-            }
-        } else if (evt.button == BTN_ID_SELECT && _activeIndex == 0) {
-            toggleCarousel();
+        if (evt.button == BTN_ID_ENTER) {
+            toggleCarousel(); // Short tap on Enter opens app launcher
+        } else if (evt.button == BTN_ID_LEFT || evt.button == BTN_ID_UP) {
+            prevApp();
+        } else if (evt.button == BTN_ID_RIGHT || evt.button == BTN_ID_DOWN) {
+            nextApp();
         }
     }
 }
@@ -202,6 +219,7 @@ void AppRegistry::prevApp() {
 }
 
 void AppRegistry::returnHome() {
+    _inCarousel = false;
     switchApp(0);
 }
 

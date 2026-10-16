@@ -90,11 +90,11 @@ All GPIO assignments below match [`include/config.h`](../include/config.h) exact
 | **Indicator LED** | **Anode (+)** | **GPIO 2** | 🔴 Red | 3.3V | Connect through **220Ω or 330Ω resistor** |
 | | **Cathode (-)**| **GND** | ⚫ Black | 0V | Short leg to GND |
 | **WS2812 RGB** | **Built-in** | **GPIO 48** | — | 3.3V | Built into ESP32-S3 DevKit boards |
-| **5× Buttons** | **BTN_UP** | **GPIO 1** | Blue | 3.3V | Connect between GPIO 1 and GND |
-| *(Active LOW)* | **BTN_DOWN** | **GPIO 3** | Green | 3.3V | Connect between GPIO 3 and GND |
-| | **BTN_SELECT**| **GPIO 18** | Yellow | 3.3V | Connect between GPIO 18 and GND |
-| | **BTN_BACK** | **GPIO 17** | Orange | 3.3V | Connect between GPIO 17 and GND |
-| | **BTN_ACTION**| **GPIO 16** | Purple | 3.3V | Quick-Action / PTT (connect to GND) |
+| **5× Buttons** | **BTN_UP** | **GPIO 1** | Blue | 3.3V | Up Navigation / Lander thruster (active LOW to GND) |
+| *(Active LOW)* | **BTN_DOWN** | **GPIO 3** | Green | 3.3V | Down Navigation / Lander drift invert (active LOW to GND) |
+| | **BTN_LEFT** | **GPIO 17** | Orange | 3.3V | Left Navigation / Steer left / Dim (active LOW to GND) |
+| | **BTN_RIGHT**| **GPIO 18** | Yellow | 3.3V | Right Navigation / Steer right / Brighten (active LOW to GND) |
+| | **BTN_ENTER**| **GPIO 16** | Purple | 3.3V | Tap: Enter/Select \| Hold 0.5s: Back \| Hold 2s: Home |
 
 ---
 
@@ -196,20 +196,23 @@ All five push buttons utilize the ESP32-S3's internal pull-up resistors (`INPUT_
    ESP32 GPIO 1  (UP)      ------+
                                  |
    ESP32 GPIO 3  (DOWN)    ------+
-                                 |  [ Normal Open Tactile Buttons ]
-   ESP32 GPIO 18 (SELECT)  ------+          o     o
+                                 |  [ Normally Open Tactile Buttons ]
+   ESP32 GPIO 17 (LEFT)    ------+          o     o
                                  |          |     |
-   ESP32 GPIO 17 (BACK)    ------+          +--[ ]--+------> Common GND Rail
+   ESP32 GPIO 18 (RIGHT)   ------+          +--[ ]--+------> Common GND Rail
                                  |
-   ESP32 GPIO 16 (ACTION)  ------+
+   ESP32 GPIO 16 (ENTER)   ------+
 ```
 
 #### Button Action Map:
-- **UP (GPIO 1)**: Previous app in carousel / Value adjust up / Lander thruster
-- **DOWN (GPIO 3)**: Next app in carousel / Value adjust down / Lander reverse
-- **SELECT (GPIO 18)**: Enter app / Open carousel / Start Pomodoro timer / Pet Aura / Mode toggle
-- **BACK (GPIO 17)**: Return to Home Dashboard / Exit carousel
-- **ACTION (GPIO 16)**: **Universal PTT Voice Memo Capture** (click anywhere to record voice directly to SD card!)
+- **UP (GPIO 1)**: Previous app / Value adjust up / Lander thruster
+- **DOWN (GPIO 3)**: Next app / Value adjust down / Lander reverse drift
+- **LEFT (GPIO 17)**: Previous app / Dim backlight or brightness / Lander steer left
+- **RIGHT (GPIO 18)**: Next app / Increase backlight or brightness / Lander steer right
+- **ENTER (GPIO 16)**:
+  - **Short Tap (< 0.5s)**: Select / Enter app / Open carousel (from Home) / Toggle mode / Play/Pause
+  - **Hold 0.5s**: Back to previous screen / Exit carousel
+  - **Hold 2.0s**: Instant return to Home Dashboard from any app or menu
 
 ---
 
@@ -234,9 +237,9 @@ All five push buttons utilize the ESP32-S3's internal pull-up resistors (`INPUT_
            | [GPIO 12] ------------> SPI SCK  (TFT + SD Card)     |
            | [GPIO 13] ------------> SPI MISO (SD Card only)      |
            | [GPIO 14] ------------> ST7735 RESET                 |
-           | [GPIO 16] ------------> BTN_ACTION (PTT Voice)-(GND) |
-           | [GPIO 17] ------------> BTN_BACK --------------(GND) |
-           | [GPIO 18] ------------> BTN_SELECT ------------(GND) |
+           | [GPIO 16] ------------> BTN_ENTER (Enter/Back/Home)  |
+           | [GPIO 17] ------------> BTN_LEFT --------------(GND) |
+           | [GPIO 18] ------------> BTN_RIGHT -------------(GND) |
            | [GPIO 21] ------------> ST7735 BLK (Backlight)       |
            | [GPIO 47] ------------> MicroSD CS                   |
            | [GPIO 48] ------------> Built-in WS2812 RGB LED      |

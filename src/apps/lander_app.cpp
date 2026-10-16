@@ -117,25 +117,31 @@ void LanderApp::onRender(RenderEngine& gfx) {
         }
     }
 
-    gfx.drawTextCentered(64, SCREEN_HEIGHT - 10, "UP: Thrust | DN: Steer", COLOR_TEXT_MUTED, 1);
+    gfx.drawTextCentered(64, SCREEN_HEIGHT - 10, "UP:Thrust | L/R:Steer", COLOR_TEXT_MUTED, 1);
 }
 
 bool LanderApp::onButtonEvent(const ButtonEvent& evt) {
     if (_gameOver || _landed) {
-        if (evt.type == BUTTON_CLICK && evt.button == BTN_ID_SELECT) {
+        if (evt.type == BUTTON_CLICK && (evt.button == BTN_ID_ENTER || evt.button == BTN_ID_RIGHT)) {
             resetGame();
             return true;
         }
     }
 
     if (evt.button == BTN_ID_UP) {
-        if (evt.type == BUTTON_CLICK || evt.type == BUTTON_HOLD || evt.type == BUTTON_REPEAT) {
+        if (evt.type == BUTTON_CLICK || evt.type == BUTTON_HOLD_05S || evt.type == BUTTON_REPEAT) {
             _thrusting = true;
             return true;
         } else if (evt.type == BUTTON_RELEASE) {
             _thrusting = false;
             return true;
         }
+    } else if (evt.button == BTN_ID_LEFT && (evt.type == BUTTON_CLICK || evt.type == BUTTON_REPEAT)) {
+        _velX -= 0.35f; // Steer left
+        return true;
+    } else if (evt.button == BTN_ID_RIGHT && (evt.type == BUTTON_CLICK || evt.type == BUTTON_REPEAT)) {
+        _velX += 0.35f; // Steer right
+        return true;
     } else if (evt.button == BTN_ID_DOWN && evt.type == BUTTON_CLICK) {
         _velX = -_velX; // Invert drift
         return true;

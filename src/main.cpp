@@ -92,9 +92,9 @@ void setup() {
         0 // Core 0
     );
 
-    // Initial chime
-    IndicatorLed::getInstance().flashOnce(300);
-    RgbController::getInstance().triggerFlash(0x00FFFF, 500);
+    // Initial light state: Off by default
+    IndicatorLed::getInstance().setPattern(LED_OFF);
+    RgbController::getInstance().setMode(RGB_OFF);
 
     Serial.println("[ORBIT] OS Initialized Successfully.");
 }

@@ -68,12 +68,12 @@ void RecorderApp::onRender(RenderEngine& gfx) {
     gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 101, sdBuf, COLOR_TEXT_MUTED, 1);
 
     // Controls hint
-    const char* hint = recording ? "SELECT: Stop Record" : "SELECT: Start Record";
+    const char* hint = recording ? "ENTER: Stop Record" : "ENTER: Start Record";
     gfx.drawTextCentered(64, SCREEN_HEIGHT - 12, hint, recording ? COLOR_NEON_RED : COLOR_TEXT_MUTED, 1);
 }
 
 bool RecorderApp::onButtonEvent(const ButtonEvent& evt) {
-    if (evt.type == BUTTON_CLICK && evt.button == BTN_ID_SELECT) {
+    if (evt.type == BUTTON_CLICK && (evt.button == BTN_ID_ENTER || evt.button == BTN_ID_SELECT)) {
         if (MicSensor::getInstance().isRecording()) {
             MicSensor::getInstance().stopRecording();
             onEnter(); // Refresh count

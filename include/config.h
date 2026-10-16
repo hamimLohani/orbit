@@ -58,13 +58,19 @@
 // ------------------------------------------------------------------------------
 #define PIN_BTN_UP            1
 #define PIN_BTN_DOWN          3
-#define PIN_BTN_SELECT        18
-#define PIN_BTN_BACK          17
-#define PIN_BTN_ACTION        16   // PTT / Quick Action
+#define PIN_BTN_LEFT          17   // Left navigation (was Back)
+#define PIN_BTN_RIGHT         18   // Right navigation (was Select)
+#define PIN_BTN_ENTER         16   // Enter / Action (.5s=Back, 2s=Home)
 
-// Button Debounce Timings (ms)
+// Backward compatibility aliases
+#define PIN_BTN_SELECT        PIN_BTN_RIGHT
+#define PIN_BTN_BACK          PIN_BTN_LEFT
+#define PIN_BTN_ACTION        PIN_BTN_ENTER
+
+// Button Debounce & Hold Timings (ms)
 #define BTN_DEBOUNCE_MS       35
-#define BTN_HOLD_MS           600
+#define BTN_HOLD_05S_MS       500  // 0.5s -> Back
+#define BTN_HOLD_2S_MS        2000 // 2.0s -> Home
 #define BTN_REPEAT_MS         150
 
 // ------------------------------------------------------------------------------

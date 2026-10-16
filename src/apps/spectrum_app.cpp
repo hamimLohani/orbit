@@ -151,7 +151,7 @@ void SpectrumApp::renderWaveform(RenderEngine& gfx) {
 }
 
 bool SpectrumApp::onButtonEvent(const ButtonEvent& evt) {
-    if (evt.type == BUTTON_CLICK && evt.button == BTN_ID_SELECT) {
+    if (evt.type == BUTTON_CLICK && (evt.button == BTN_ID_ENTER || evt.button == BTN_ID_SELECT)) {
         _mode = static_cast<SpectrumMode>((_mode + 1) % SPEC_MODE_MAX);
         return true;
     }

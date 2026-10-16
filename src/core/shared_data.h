@@ -36,8 +36,8 @@ struct TelemetryData {
     char activeAppId[16] = "home";
 
     // Lighting State
-    uint8_t rgbMode = 1;        // Ambient
-    uint32_t rgbColor = 0x00FFFF;
+    uint8_t rgbMode = 0;        // Off
+    uint32_t rgbColor = 0x000000;
     uint8_t brightness = 80;    // 0-100%
 };
 

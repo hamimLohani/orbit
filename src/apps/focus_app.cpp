@@ -127,12 +127,12 @@ void FocusApp::onRender(RenderEngine& gfx) {
     }
 
     // Controls hint
-    gfx.drawTextCentered(64, SCREEN_HEIGHT - 12, "SELECT: Play/Pause", COLOR_TEXT_MUTED, 1);
+    gfx.drawTextCentered(64, SCREEN_HEIGHT - 12, "ENTER: Play/Pause", COLOR_TEXT_MUTED, 1);
 }
 
 bool FocusApp::onButtonEvent(const ButtonEvent& evt) {
     if (evt.type == BUTTON_CLICK) {
-        if (evt.button == BTN_ID_SELECT) {
+        if (evt.button == BTN_ID_ENTER || evt.button == BTN_ID_SELECT) {
             if (_state == POMO_IDLE || _state == POMO_PAUSED) {
                 _state = POMO_FOCUS;
                 _lastTick = millis();
@@ -141,7 +141,7 @@ bool FocusApp::onButtonEvent(const ButtonEvent& evt) {
                 _state = POMO_PAUSED;
             }
             return true;
-        } else if (evt.button == BTN_ID_UP || evt.button == BTN_ID_DOWN) {
+        } else if (evt.button == BTN_ID_UP || evt.button == BTN_ID_DOWN || evt.button == BTN_ID_LEFT || evt.button == BTN_ID_RIGHT) {
             // Reset timer
             _state = POMO_IDLE;
             uint16_t focusMins = SettingsManager::getInstance().getPomodoroFocusMins();

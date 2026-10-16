@@ -46,21 +46,21 @@ void LightsApp::onRender(RenderEngine& gfx) {
     gfx.drawTextRight(112, STATUS_BAR_HEIGHT + 92, bBuf, COLOR_TEXT_LIGHT, 1);
     gfx.drawProgressBar(14, STATUS_BAR_HEIGHT + 108, 100, 6, pct, COLOR_NEON_CYAN);
 
-    gfx.drawTextCentered(64, SCREEN_HEIGHT - 12, "SELECT: Mode | UP/DN: Dim", COLOR_TEXT_MUTED, 1);
+    gfx.drawTextCentered(64, SCREEN_HEIGHT - 12, "ENTER: Mode | L/R: Dim", COLOR_TEXT_MUTED, 1);
 }
 
 bool LightsApp::onButtonEvent(const ButtonEvent& evt) {
-    if (evt.type == BUTTON_CLICK) {
-        if (evt.button == BTN_ID_SELECT) {
+    if (evt.type == BUTTON_CLICK || evt.type == BUTTON_REPEAT) {
+        if (evt.button == BTN_ID_ENTER) {
             uint8_t nextMode = (RgbController::getInstance().getMode() + 1) % RGB_MODE_MAX;
             RgbController::getInstance().setMode(static_cast<RgbLightingMode>(nextMode));
             return true;
-        } else if (evt.button == BTN_ID_UP) {
+        } else if (evt.button == BTN_ID_UP || evt.button == BTN_ID_RIGHT) {
             uint8_t b = RgbController::getInstance().getBrightness();
             b = (b <= 230) ? (b + 25) : 255;
             RgbController::getInstance().setBrightness(b);
             return true;
-        } else if (evt.button == BTN_ID_DOWN) {
+        } else if (evt.button == BTN_ID_DOWN || evt.button == BTN_ID_LEFT) {
             uint8_t b = RgbController::getInstance().getBrightness();
             b = (b >= 25) ? (b - 25) : 0;
             RgbController::getInstance().setBrightness(b);

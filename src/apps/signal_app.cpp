@@ -37,21 +37,21 @@ void SignalApp::onRender(RenderEngine& gfx) {
     // Ping / Test Card
     gfx.drawCard(8, STATUS_BAR_HEIGHT + 90, 112, 34, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
     gfx.drawText(14, STATUS_BAR_HEIGHT + 95, "TRIGGER BEACON", COLOR_TEXT_MUTED, 1);
-    gfx.drawText(14, STATUS_BAR_HEIGHT + 107, "Press SELECT", COLOR_NEON_AMBER, 1);
+    gfx.drawText(14, STATUS_BAR_HEIGHT + 107, "Press ENTER", COLOR_NEON_AMBER, 1);
 
-    gfx.drawTextCentered(64, SCREEN_HEIGHT - 12, "SELECT: Toggle Beacon", COLOR_TEXT_MUTED, 1);
+    gfx.drawTextCentered(64, SCREEN_HEIGHT - 12, "ENTER: Toggle Beacon", COLOR_TEXT_MUTED, 1);
 }
 
 bool SignalApp::onButtonEvent(const ButtonEvent& evt) {
-    if (evt.type == BUTTON_CLICK && evt.button == BTN_ID_SELECT) {
+    if (evt.type == BUTTON_CLICK && (evt.button == BTN_ID_ENTER || evt.button == BTN_ID_SELECT)) {
         _strobeActive = !_strobeActive;
         if (_strobeActive) {
             IndicatorLed::getInstance().setPattern(LED_BLINK_FAST);
             RgbController::getInstance().setMode(RGB_ALERT);
             RenderEngine::getInstance().showToast("ALERT BEACON", "Beacon Strobe Triggered", COLOR_NEON_RED, 3000);
         } else {
-            IndicatorLed::getInstance().setPattern(LED_HEARTBEAT);
-            RgbController::getInstance().setMode(RGB_AMBIENT);
+            IndicatorLed::getInstance().setPattern(LED_OFF);
+            RgbController::getInstance().setMode(RGB_OFF);
         }
         return true;
     }

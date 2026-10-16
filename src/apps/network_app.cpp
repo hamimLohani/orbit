@@ -38,11 +38,11 @@ void NetworkApp::onRender(RenderEngine& gfx) {
     gfx.drawText(14, STATUS_BAR_HEIGHT + 95, "http://orbit.local", COLOR_NEON_CYAN, 1);
     gfx.drawText(14, STATUS_BAR_HEIGHT + 107, "Port 80 /ws", COLOR_TEXT_MUTED, 1);
 
-    gfx.drawTextCentered(64, SCREEN_HEIGHT - 12, "SELECT: Reconnect", COLOR_TEXT_MUTED, 1);
+    gfx.drawTextCentered(64, SCREEN_HEIGHT - 12, "ENTER: Reconnect", COLOR_TEXT_MUTED, 1);
 }
 
 bool NetworkApp::onButtonEvent(const ButtonEvent& evt) {
-    if (evt.type == BUTTON_CLICK && evt.button == BTN_ID_SELECT) {
+    if (evt.type == BUTTON_CLICK && (evt.button == BTN_ID_ENTER || evt.button == BTN_ID_SELECT)) {
         WifiManager::getInstance().init();
         RenderEngine::getInstance().showToast("NETWORK", "Reconnecting Wi-Fi...", COLOR_NEON_CYAN, 3000);
         return true;

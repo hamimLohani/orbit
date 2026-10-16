@@ -50,17 +50,17 @@ void SystemApp::onRender(RenderEngine& gfx) {
     snprintf(verBuf, sizeof(verBuf), "OS v%s", ORBIT_VERSION_STR);
     gfx.drawText(14, STATUS_BAR_HEIGHT + 109, verBuf, COLOR_NEON_MINT, 1);
 
-    gfx.drawTextCentered(64, SCREEN_HEIGHT - 12, "UP/DN: Adjust Backlight", COLOR_TEXT_MUTED, 1);
+    gfx.drawTextCentered(64, SCREEN_HEIGHT - 12, "L/DN:- | R/UP:+ Light", COLOR_TEXT_MUTED, 1);
 }
 
 bool SystemApp::onButtonEvent(const ButtonEvent& evt) {
     if (evt.type == BUTTON_CLICK || evt.type == BUTTON_REPEAT) {
-        if (evt.button == BTN_ID_UP) {
+        if (evt.button == BTN_ID_UP || evt.button == BTN_ID_RIGHT) {
             _brightness = (_brightness <= 90) ? (_brightness + 10) : 100;
             RenderEngine::getInstance().setBacklight(_brightness);
             SettingsManager::getInstance().setBrightness(_brightness);
             return true;
-        } else if (evt.button == BTN_ID_DOWN) {
+        } else if (evt.button == BTN_ID_DOWN || evt.button == BTN_ID_LEFT) {
             _brightness = (_brightness >= 10) ? (_brightness - 10) : 0;
             RenderEngine::getInstance().setBacklight(_brightness);
             SettingsManager::getInstance().setBrightness(_brightness);

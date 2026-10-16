@@ -45,7 +45,7 @@ private:
     void writePixel(uint8_t r, uint8_t g, uint8_t b);
     void hsvToRgb(uint16_t h, uint8_t s, uint8_t v, uint8_t& r, uint8_t& g, uint8_t& b);
 
-    RgbLightingMode _mode = RGB_AMBIENT;
+    RgbLightingMode _mode = RGB_OFF;
     uint32_t _customColor = 0x00FFFF;
     uint8_t _brightness = 180;
     uint32_t _lastUpdate = 0;
