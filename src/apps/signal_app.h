@@ -11,7 +11,7 @@ public:
     ~SignalApp() override = default;
 
     AppMetadata getMetadata() const override {
-        return { "signal", "Signal", 7, false };
+        return { "signal", "Signal", 6, false };
     }
 
     void onInit() override;

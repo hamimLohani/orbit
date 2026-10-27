@@ -111,34 +111,57 @@ void AppRegistry::renderCarousel(RenderEngine& gfx) {
 
     if (_apps.empty()) return;
 
-    // Carousel Card Center
+    // Carousel Card Center (y=40..108)
     int16_t cardX = 14;
-    int16_t cardY = STATUS_BAR_HEIGHT + 32;
+    int16_t cardY = STATUS_BAR_HEIGHT + 26; // 14 + 26 = 40
     int16_t cardW = 100;
-    int16_t cardH = 75;
+    int16_t cardH = 68; // ends cleanly at 108
 
     gfx.drawCard(cardX, cardY, cardW, cardH, COLOR_SLATE_MID, COLOR_NEON_CYAN);
 
-    // Draw active carousel app icon large
+    // Draw active carousel app icon
     AppMetadata meta = _apps[_carouselIndex]->getMetadata();
-    gfx.drawIcon(cardX + 42, cardY + 12, meta.iconIndex, COLOR_NEON_CYAN, COLOR_SLATE_MID);
+    gfx.drawIcon(cardX + 42, cardY + 10, meta.iconIndex, COLOR_NEON_CYAN, COLOR_SLATE_MID);
 
     // Draw Title
-    gfx.drawTextCentered(64, cardY + 36, meta.title, COLOR_TEXT_LIGHT, 1);
+    gfx.drawTextCentered(64, cardY + 31, meta.title, COLOR_TEXT_LIGHT, 1);
 
-    // Draw Indicator Dots / App count
+    // Draw App index badge
     char idxBuf[16];
-    snprintf(idxBuf, sizeof(idxBuf), "%d / %d", (int)_carouselIndex + 1, (int)_apps.size());
-    gfx.drawTextCentered(64, cardY + 54, idxBuf, COLOR_TEXT_MUTED, 1);
+    snprintf(idxBuf, sizeof(idxBuf), "APP %d / %d", (int)_carouselIndex + 1, (int)_apps.size());
+    gfx.drawTextCentered(64, cardY + 49, idxBuf, COLOR_NEON_AMBER, 1);
 
-    // Navigation Hint at bottom
-    gfx.drawTextCentered(64, SCREEN_HEIGHT - 12, "< L / R >  ENTER: Select", COLOR_TEXT_MUTED, 1);
+    // Carousel App Tracker Dots at y=114 (pill for active app)
+    int totalApps = (int)_apps.size();
+    if (totalApps > 1) {
+        int dotSpacing = 7;
+        int totalWidth = (totalApps - 1) * dotSpacing;
+        int startX = 64 - (totalWidth / 2);
+        for (int i = 0; i < totalApps; ++i) {
+            int dx = startX + (i * dotSpacing);
+            if (i == (int)_carouselIndex) {
+                gfx.fillRect(dx - 2, 114, 5, 3, COLOR_NEON_CYAN); // Active pill
+            } else {
+                gfx.fillRect(dx, 115, 2, 2, COLOR_SLATE_BORDER); // Inactive dot
+            }
+        }
+    }
+
+    // Divider line at y=123
+    gfx.drawFastHLine(14, 123, 100, COLOR_SLATE_BORDER);
+
+    // Non-overlapping Menu Footer Navigation (19 chars = 114px, centered with 7px margins on each side)
+    gfx.drawTextCentered(64, 129, "< L / R >  OK: Open", COLOR_NEON_CYAN, 1);
+
+    if (!MicSensor::getInstance().isRecording()) {
+        gfx.drawTextCentered(64, 143, "1s: Back   3s: Home", COLOR_TEXT_MUTED, 1);
+    }
 }
 
 void AppRegistry::handleButtonEvent(const ButtonEvent& evt) {
     if (_registryMutex && xSemaphoreTakeRecursive(_registryMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
-        // 1. Threshold: 2.5s Long Hold on ENTER -> Direct return to HOME
-        if (evt.button == BTN_ID_ENTER && evt.type == BUTTON_HOLD_2S) {
+        // 1. Threshold: 3.0s Long Hold on ENTER -> Direct return to HOME ("3s enter = home")
+        if (evt.button == BTN_ID_ENTER && (evt.type == BUTTON_HOLD_3S || evt.type == BUTTON_HOLD_2S)) {
             returnHome();
             _inCarousel = false;
             RenderEngine::getInstance().showToast("HOME", "Returned to Home", COLOR_NEON_CYAN, 1200);
@@ -146,14 +169,29 @@ void AppRegistry::handleButtonEvent(const ButtonEvent& evt) {
             return;
         }
 
-        // 2. Threshold: 1.0s Hold on ENTER -> Go BACK ("1s enter=back")
+        // 2. Threshold: 1.0s Hold on ENTER -> 1 Step Back ("1s enter = 1 step back")
         if (evt.button == BTN_ID_ENTER && (evt.type == BUTTON_HOLD_1S || evt.type == BUTTON_HOLD_05S)) {
+            // A. If Carousel is open, 1 step back closes the launcher
             if (_inCarousel) {
                 _inCarousel = false;
                 RenderEngine::getInstance().showToast("BACK", "Closed Launcher", COLOR_TEXT_MUTED, 800);
-            } else if (_activeIndex != 0) {
-                returnHome();
-                RenderEngine::getInstance().showToast("BACK", "Returned to Home", COLOR_TEXT_MUTED, 1000);
+                xSemaphoreGiveRecursive(_registryMutex);
+                return;
+            }
+
+            // B. Give active app a chance to step back internally (e.g. in-game -> menu, subpage -> page 0)
+            if (_activeIndex < _apps.size()) {
+                if (_apps[_activeIndex]->onButtonEvent(evt)) {
+                    xSemaphoreGiveRecursive(_registryMutex);
+                    return; // Active app consumed 1 step back
+                }
+            }
+
+            // C. If active app did not consume it, step back to the Launcher Menu
+            if (_activeIndex != 0) {
+                _inCarousel = true;
+                _carouselIndex = _activeIndex;
+                RenderEngine::getInstance().showToast("MENU", "App Launcher", COLOR_TEXT_MUTED, 800);
             }
             xSemaphoreGiveRecursive(_registryMutex);
             return;
@@ -176,7 +214,7 @@ void AppRegistry::handleButtonEvent(const ButtonEvent& evt) {
             return;
         }
 
-        // 4. Active App Input Delegation
+        // 4. Active App Input Delegation (app handles its own internal controls)
         if (_activeIndex < _apps.size()) {
             if (_apps[_activeIndex]->onButtonEvent(evt)) {
                 xSemaphoreGiveRecursive(_registryMutex);
@@ -184,14 +222,18 @@ void AppRegistry::handleButtonEvent(const ButtonEvent& evt) {
             }
         }
 
-        // 5. Default Navigation on Home Dashboard
-        if (evt.type == BUTTON_CLICK) {
+        // 5. Default Navigation strictly on Home Dashboard (app 0)
+        // Inside any app, unhandled L/R does NOT change apps; user must hold 1s Enter to back out to menu first
+        if (_activeIndex == 0 && evt.type == BUTTON_CLICK) {
             if (evt.button == BTN_ID_ENTER) {
                 toggleCarousel(); // Short tap on Enter opens app launcher
             } else if (evt.button == BTN_ID_LEFT || evt.button == BTN_ID_UP) {
-                prevApp();
+                _inCarousel = true;
+                if (_carouselIndex > 0) _carouselIndex--;
+                else _carouselIndex = _apps.size() - 1;
             } else if (evt.button == BTN_ID_RIGHT || evt.button == BTN_ID_DOWN) {
-                nextApp();
+                _inCarousel = true;
+                _carouselIndex = (_carouselIndex + 1) % _apps.size();
             }
         }
 
@@ -213,6 +255,7 @@ bool AppRegistry::switchApp(size_t index) {
 
         if (_activeIndex < _apps.size()) {
             _apps[_activeIndex]->onExit();
+            _previousIndex = _activeIndex;
         }
 
         _activeIndex = index;

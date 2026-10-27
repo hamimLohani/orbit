@@ -43,6 +43,7 @@ private:
 
     std::vector<AppBase*> _apps;
     size_t _activeIndex = 0;
+    size_t _previousIndex = 0;
     size_t _carouselIndex = 0;
     bool _inCarousel = false;
     SemaphoreHandle_t _registryMutex = nullptr;

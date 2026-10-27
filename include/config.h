@@ -69,9 +69,10 @@
 
 // Button Debounce & Hold Timings (ms)
 #define BTN_DEBOUNCE_MS       25
-#define BTN_HOLD_1S_MS        1000 // 1.0s -> Back (1s enter=back)
+#define BTN_HOLD_1S_MS        1000 // 1.0s -> 1 step back ("1s enter = 1 step back")
+#define BTN_HOLD_3S_MS        3000 // 3.0s -> Home ("3s enter = home")
+#define BTN_HOLD_2S_MS        BTN_HOLD_3S_MS // Backward compatibility alias
 #define BTN_HOLD_05S_MS       BTN_HOLD_1S_MS // Backward compatibility alias
-#define BTN_HOLD_2S_MS        2500 // 2.5s -> Home
 #define BTN_REPEAT_DELAY_MS   350  // Initial hold delay before repeat
 #define BTN_REPEAT_MS         120  // Continuous repeat interval
 

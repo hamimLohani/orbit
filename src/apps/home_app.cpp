@@ -99,14 +99,5 @@ void HomeApp::onRender(RenderEngine& gfx) {
 }
 
 bool HomeApp::onButtonEvent(const ButtonEvent& evt) {
-    if (evt.type == BUTTON_CLICK) {
-        if (evt.button == BTN_ID_UP || evt.button == BTN_ID_LEFT) {
-            AppRegistry::getInstance().prevApp();
-            return true;
-        } else if (evt.button == BTN_ID_DOWN || evt.button == BTN_ID_RIGHT) {
-            AppRegistry::getInstance().nextApp();
-            return true;
-        }
-    }
-    return false;
+    return false; // Handled cleanly by AppRegistry Launcher Carousel
 }

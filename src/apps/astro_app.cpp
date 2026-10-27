@@ -26,7 +26,7 @@ void AstroApp::onRender(RenderEngine& gfx) {
     TelemetryData telem = SharedData::getInstance().getData();
 
     gfx.fillRect(0, STATUS_BAR_HEIGHT, SCREEN_WIDTH, CONTENT_HEIGHT, COLOR_VOID_DARK);
-    gfx.drawHeader("ASTRO DASHBOARD", 6);
+    gfx.drawHeader("ASTRO DASHBOARD", 5);
 
     int16_t cx = 36;
     int16_t cy = STATUS_BAR_HEIGHT + 45; // y = 59

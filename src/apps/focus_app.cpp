@@ -2,7 +2,6 @@
 #include "src/core/app_registry.h"
 #include "src/core/shared_data.h"
 #include "src/core/settings_manager.h"
-#include "src/lighting/rgb_controller.h"
 #include "src/lighting/indicator_led.h"
 #include "src/display/theme.h"
 #include <cmath>
@@ -35,7 +34,6 @@ void FocusApp::onUpdate(uint32_t deltaMs) {
                     _remainingSeconds = _totalSeconds;
                     RenderEngine::getInstance().showToast("FOCUS COMPLETE!", "Time for a 5m break", COLOR_NEON_MINT, 5000);
                     IndicatorLed::getInstance().flashOnce(500);
-                    RgbController::getInstance().triggerFlash(0x2FE8FF, 1000);
                 } else {
                     _state = POMO_IDLE;
                     uint16_t focusMins = SettingsManager::getInstance().getPomodoroFocusMins();
@@ -55,7 +53,6 @@ void FocusApp::onUpdate(uint32_t deltaMs) {
                 if (_noiseViolationMs > 4000) { // 4s continuous noise
                     _distractionAlert = true;
                     SharedData::getInstance().setNoiseDistraction(true);
-                    RgbController::getInstance().triggerFlash(0xFF0000, 200);
                 }
             } else {
                 _noiseViolationMs = (_noiseViolationMs > deltaMs) ? (_noiseViolationMs - deltaMs) : 0;
@@ -70,7 +67,7 @@ void FocusApp::onUpdate(uint32_t deltaMs) {
 
 void FocusApp::onRender(RenderEngine& gfx) {
     gfx.fillRect(0, STATUS_BAR_HEIGHT, SCREEN_WIDTH, CONTENT_HEIGHT, COLOR_VOID_DARK);
-    gfx.drawHeader("FOCUS FLOW", 4);
+    gfx.drawHeader("FOCUS FLOW", 3);
 
     int16_t cx = 64;
     int16_t cy = STATUS_BAR_HEIGHT + 45; // y = 59
@@ -131,12 +128,28 @@ void FocusApp::onRender(RenderEngine& gfx) {
 }
 
 bool FocusApp::onButtonEvent(const ButtonEvent& evt) {
+    // 1s Enter = 1 step back
+    if (evt.button == BTN_ID_ENTER && (evt.type == BUTTON_HOLD_1S || evt.type == BUTTON_HOLD_05S)) {
+        if (_state == POMO_FOCUS || _state == POMO_BREAK) {
+            _state = POMO_PAUSED;
+            RenderEngine::getInstance().showToast("PAUSED", "Focus Paused", COLOR_TEXT_MUTED, 800);
+            return true;
+        } else if (_state == POMO_PAUSED) {
+            _state = POMO_IDLE;
+            uint16_t focusMins = SettingsManager::getInstance().getPomodoroFocusMins();
+            _totalSeconds = focusMins * 60;
+            _remainingSeconds = _totalSeconds;
+            RenderEngine::getInstance().showToast("RESET", "Focus Timer Reset", COLOR_TEXT_MUTED, 800);
+            return true;
+        }
+        return false; // In IDLE: allow AppRegistry to step back out to Home
+    }
+
     if (evt.type == BUTTON_CLICK) {
         if (evt.button == BTN_ID_ENTER || evt.button == BTN_ID_SELECT) {
             if (_state == POMO_IDLE || _state == POMO_PAUSED) {
                 _state = POMO_FOCUS;
                 _lastTick = millis();
-                RgbController::getInstance().setMode(RGB_BREATHE);
             } else if (_state == POMO_FOCUS || _state == POMO_BREAK) {
                 _state = POMO_PAUSED;
             }

@@ -1,4 +1,5 @@
 #include "src/display/render_engine.h"
+#include "src/core/settings_manager.h"
 #include <cstring>
 
 SemaphoreHandle_t RenderEngine::_spiMutex = nullptr;
@@ -19,7 +20,7 @@ SemaphoreHandle_t RenderEngine::getSpiMutex() {
 }
 
 void RenderEngine::init() {
-    // Backlight PWM pin - start solid ON
+    // Backlight PWM pin
     pinMode(PIN_TFT_BL, OUTPUT);
     digitalWrite(PIN_TFT_BL, HIGH);
 
@@ -38,11 +39,15 @@ void RenderEngine::init() {
     }
 
     _canvas.fillScreen(COLOR_VOID_DARK);
-    setBacklight(100);
+
+    // Remember and restore previous user brightness preference from NVS
+    uint8_t savedBrightness = SettingsManager::getInstance().getBrightness();
+    setBacklight(savedBrightness);
 }
 
 void RenderEngine::setBacklight(uint8_t brightnessPercent) {
     brightnessPercent = constrain(brightnessPercent, 0, 100);
+    _currentBrightness = brightnessPercent;
     if (brightnessPercent >= 99) {
         digitalWrite(PIN_TFT_BL, HIGH);
     } else if (brightnessPercent == 0) {

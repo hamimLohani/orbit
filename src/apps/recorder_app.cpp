@@ -24,7 +24,7 @@ void RecorderApp::onUpdate(uint32_t deltaMs) {}
 
 void RecorderApp::onRender(RenderEngine& gfx) {
     gfx.fillRect(0, STATUS_BAR_HEIGHT, SCREEN_WIDTH, CONTENT_HEIGHT, COLOR_VOID_DARK);
-    gfx.drawHeader("VOICE RECORDER", 5);
+    gfx.drawHeader("VOICE RECORDER", 4);
 
     bool recording = MicSensor::getInstance().isRecording();
 
@@ -60,7 +60,9 @@ void RecorderApp::onRender(RenderEngine& gfx) {
     BitmapLoader::getInstance().getStorageStats(totalMb, usedMb);
     char sdBuf[32];
     if (totalMb > 0) {
-        snprintf(sdBuf, sizeof(sdBuf), "SD: %luMB / %luMB", (unsigned long)usedMb, (unsigned long)totalMb);
+        uint32_t freeMb = (totalMb >= usedMb) ? (totalMb - usedMb) : 0;
+        uint8_t freePct = (uint8_t)(((uint64_t)freeMb * 100) / totalMb);
+        snprintf(sdBuf, sizeof(sdBuf), "SD: %luMB (%d%% Free)", (unsigned long)freeMb, (int)freePct);
     } else {
         snprintf(sdBuf, sizeof(sdBuf), "SD: Active (SPI)");
     }

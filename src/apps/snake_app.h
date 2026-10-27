@@ -61,7 +61,7 @@ public:
     ~SnakeApp() override = default;
 
     AppMetadata getMetadata() const override {
-        return { "snake", "Snake", 12, false };
+        return { "snake", "Snake", 11, false };
     }
 
     void onInit() override;

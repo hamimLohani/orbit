@@ -11,7 +11,7 @@ public:
     ~RecorderApp() override = default;
 
     AppMetadata getMetadata() const override {
-        return { "recorder", "Voice Memo", 5, false };
+        return { "recorder", "Voice Memo", 4, false };
     }
 
     void onInit() override;

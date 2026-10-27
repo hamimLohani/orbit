@@ -38,7 +38,7 @@ void SettingsManager::setThemeId(uint8_t id) {
 }
 
 uint8_t SettingsManager::getRgbMode() {
-    return _prefs.getUChar("rgb_mode", 1);
+    return _prefs.getUChar("rgb_mode", 0); // Default to RGB_OFF (0)
 }
 
 void SettingsManager::setRgbMode(uint8_t mode) {

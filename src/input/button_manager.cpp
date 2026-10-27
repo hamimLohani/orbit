@@ -1,7 +1,7 @@
 #include "src/input/button_manager.h"
 
 void ButtonManager::init() {
-    // pin, isDown, lastRawReading, lastDebounceTime, pressTime, lastRepeatTime, hold1sFired, hold2sFired
+    // pin, isDown, lastRawReading, lastDebounceTime, pressTime, lastRepeatTime, hold1sFired, hold3sFired
     _buttons[BTN_ID_UP]    = { PIN_BTN_UP,    false, false, 0, 0, 0, false, false };
     _buttons[BTN_ID_DOWN]  = { PIN_BTN_DOWN,  false, false, 0, 0, 0, false, false };
     _buttons[BTN_ID_LEFT]  = { PIN_BTN_LEFT,  false, false, 0, 0, 0, false, false };
@@ -46,7 +46,7 @@ void ButtonManager::update() {
                     _buttons[i].pressTime = now;
                     _buttons[i].lastRepeatTime = now;
                     _buttons[i].hold1sFired = false;
-                    _buttons[i].hold2sFired = false;
+                    _buttons[i].hold3sFired = false;
 
                     // Directional buttons (UP, DOWN, LEFT, RIGHT) fire BUTTON_CLICK immediately on press!
                     // This guarantees zero-latency responsiveness for games (Snake, Lander) and navigation.
@@ -61,7 +61,7 @@ void ButtonManager::update() {
 
                     if (i == BTN_ID_ENTER) {
                         // Short tap on ENTER (< 1000ms): fires BUTTON_CLICK on clean release
-                        if (!_buttons[i].hold1sFired && !_buttons[i].hold2sFired) {
+                        if (!_buttons[i].hold1sFired && !_buttons[i].hold3sFired) {
                             if (_callback) {
                                 _callback({ BTN_ID_ENTER, BUTTON_CLICK, duration });
                             }
@@ -78,7 +78,7 @@ void ButtonManager::update() {
                     }
 
                     _buttons[i].hold1sFired = false;
-                    _buttons[i].hold2sFired = false;
+                    _buttons[i].hold3sFired = false;
                 }
             }
         }
@@ -88,14 +88,14 @@ void ButtonManager::update() {
             uint32_t duration = now - _buttons[i].pressTime;
 
             if (i == BTN_ID_ENTER) {
-                // Threshold A: 2.5s Long Hold -> Home
-                if (duration >= BTN_HOLD_2S_MS && !_buttons[i].hold2sFired) {
-                    _buttons[i].hold2sFired = true;
+                // Threshold A: 3.0s Long Hold -> Home ("3s enter = home")
+                if (duration >= BTN_HOLD_3S_MS && !_buttons[i].hold3sFired) {
+                    _buttons[i].hold3sFired = true;
                     if (_callback) {
-                        _callback({ BTN_ID_ENTER, BUTTON_HOLD_2S, duration });
+                        _callback({ BTN_ID_ENTER, BUTTON_HOLD_3S, duration });
                     }
                 }
-                // Threshold B: 1.0s Hold -> Back ("1s enter=back")
+                // Threshold B: 1.0s Hold -> 1 step back ("1s enter = 1 step back")
                 else if (duration >= BTN_HOLD_1S_MS && !_buttons[i].hold1sFired) {
                     _buttons[i].hold1sFired = true;
                     if (_callback) {

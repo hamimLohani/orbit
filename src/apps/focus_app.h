@@ -18,7 +18,7 @@ public:
     ~FocusApp() override = default;
 
     AppMetadata getMetadata() const override {
-        return { "focus", "Focus", 4, true }; // Background timer execution
+        return { "focus", "Focus", 3, true }; // Background timer execution
     }
 
     void onInit() override;

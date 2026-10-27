@@ -1,13 +1,21 @@
 #include "src/lighting/rgb_controller.h"
 #include "src/core/shared_data.h"
+#include "src/core/settings_manager.h"
 #include <cmath>
 
 void RgbController::init() {
     pinMode(PIN_RGB_LED, OUTPUT);
+    _mode = static_cast<RgbLightingMode>(SettingsManager::getInstance().getRgbMode());
+    _brightness = SettingsManager::getInstance().getAppInt("rgb", "bright", 180);
+    _customColor = SettingsManager::getInstance().getRgbColor();
     writePixel(0, 0, 0);
 }
 
 void RgbController::writePixel(uint8_t r, uint8_t g, uint8_t b) {
+    if (_mode == RGB_OFF && !_isFlashing) {
+        neopixelWrite(PIN_RGB_LED, 0, 0, 0);
+        return;
+    }
     // Apply global brightness scaling
     r = (r * _brightness) / 255;
     g = (g * _brightness) / 255;
@@ -17,20 +25,29 @@ void RgbController::writePixel(uint8_t r, uint8_t g, uint8_t b) {
 
 void RgbController::setMode(RgbLightingMode mode) {
     _mode = mode;
+    if (_mode == RGB_OFF) {
+        _isFlashing = false;
+        neopixelWrite(PIN_RGB_LED, 0, 0, 0);
+    }
+    SettingsManager::getInstance().setRgbMode(mode);
     SharedData::getInstance().setLighting(_mode, _customColor, _brightness);
 }
 
 void RgbController::setColor(uint32_t rgb) {
     _customColor = rgb;
+    SettingsManager::getInstance().setRgbColor(rgb);
     SharedData::getInstance().setLighting(_mode, _customColor, _brightness);
 }
 
 void RgbController::setBrightness(uint8_t brightness) {
     _brightness = brightness;
+    SettingsManager::getInstance().setAppInt("rgb", "bright", brightness);
     SharedData::getInstance().setLighting(_mode, _customColor, _brightness);
 }
 
 void RgbController::triggerFlash(uint32_t color, uint16_t durationMs) {
+    // Only flash if the light has been turned on in the Lights section
+    if (_mode == RGB_OFF) return;
     _isFlashing = true;
     _flashColor = color;
     _flashExpiry = millis() + durationMs;
@@ -40,6 +57,12 @@ void RgbController::update() {
     uint32_t now = millis();
     if (now - _lastUpdate < 25) return; // 40Hz lighting refresh
     _lastUpdate = now;
+
+    if (_mode == RGB_OFF) {
+        _isFlashing = false;
+        neopixelWrite(PIN_RGB_LED, 0, 0, 0);
+        return;
+    }
 
     // Handle momentary flash override (e.g. Find My Device, Notification, Beat)
     if (_isFlashing) {

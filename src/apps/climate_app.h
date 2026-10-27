@@ -13,7 +13,7 @@ public:
     ~ClimateApp() override = default;
 
     AppMetadata getMetadata() const override {
-        return { "climate", "Climate", 3, true }; // Background logging enabled
+        return { "climate", "Climate", 2, true }; // Background logging enabled
     }
 
     void onInit() override;

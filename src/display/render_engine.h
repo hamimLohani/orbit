@@ -30,6 +30,7 @@ public:
 
     void init();
     void setBacklight(uint8_t brightnessPercent); // 0-100%
+    uint8_t getBacklight() const { return _currentBrightness; }
 
     // Fast screen clears
     void fillScreen(uint16_t color);
@@ -82,5 +83,6 @@ private:
     Adafruit_ST7735 _tft;
     GFXcanvas16 _canvas;
     ToastMessage _toast;
+    uint8_t _currentBrightness = 80;
     static SemaphoreHandle_t _spiMutex;
 };

@@ -16,7 +16,7 @@ void NetworkApp::onRender(RenderEngine& gfx) {
     TelemetryData telem = SharedData::getInstance().getData();
 
     gfx.fillRect(0, STATUS_BAR_HEIGHT, SCREEN_WIDTH, CONTENT_HEIGHT, COLOR_VOID_DARK);
-    gfx.drawHeader("NETWORK & TIME", 10);
+    gfx.drawHeader("NETWORK & TIME", 9);
 
     if (telem.wifiConnected) {
         // Card 1: Wi-Fi Connection (starts at y=40, height 42 -> ends at y=82)

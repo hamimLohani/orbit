@@ -25,13 +25,14 @@ enum ButtonId {
 
 enum ButtonEventType {
     BUTTON_CLICK = 0,    // Short click (< 1000ms for Enter; immediate for directional)
-    BUTTON_HOLD_1S,      // Held >= 1000ms (1s Enter = Back)
-    BUTTON_HOLD_2S,      // Held >= 2500ms (Home)
+    BUTTON_HOLD_1S,      // Held >= 1000ms (1s Enter = 1 step back)
+    BUTTON_HOLD_3S,      // Held >= 3000ms (3s Enter = Home)
     BUTTON_RELEASE,
     BUTTON_REPEAT
 };
 
-// Backward compatibility alias
+// Backward compatibility aliases
+#define BUTTON_HOLD_2S  BUTTON_HOLD_3S
 #define BUTTON_HOLD_05S BUTTON_HOLD_1S
 #define BUTTON_HOLD     BUTTON_HOLD_1S
 
@@ -68,7 +69,7 @@ private:
         uint32_t pressTime;        // When isDown transitioned to true
         uint32_t lastRepeatTime;   // When last repeat event fired
         bool hold1sFired;          // True if 1.0s hold event fired
-        bool hold2sFired;          // True if 2.5s hold event fired
+        bool hold3sFired;          // True if 3.0s hold event fired
     };
 
     ButtonState _buttons[BTN_ID_COUNT];

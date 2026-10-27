@@ -18,7 +18,6 @@ class OrbitWebController {
   init() {
     this.setupTabs();
     this.setupWebSocket();
-    this.setupSpectrumCanvas();
     this.setupAppLauncher();
     this.setupRgbControls();
     this.setupVoiceMemos();
@@ -666,14 +665,19 @@ class OrbitWebController {
             sdCap.textContent = data.storage.sd_mounted ? `${data.storage.sd_total_mb} MB` : 'N/A';
           }
           if (sdUsed) {
+            const sdFreePct = data.storage.sd_total_mb > 0
+              ? Math.round((data.storage.sd_free_mb * 100) / data.storage.sd_total_mb)
+              : 0;
             sdUsed.textContent = data.storage.sd_mounted
-              ? `${data.storage.sd_used_mb} MB / Free: ${data.storage.sd_free_mb} MB`
+              ? `${data.storage.sd_used_mb} MB / Free: ${data.storage.sd_free_mb} MB (${sdFreePct}%)`
               : 'N/A';
           }
           if (lfsUsed) {
             const usedKb = Math.round((data.storage.lfs_used_bytes || 0) / 1024);
             const totKb = Math.round((data.storage.lfs_total_bytes || 0) / 1024);
-            lfsUsed.textContent = `${usedKb} KB / ${totKb} KB`;
+            const freeKb = totKb >= usedKb ? (totKb - usedKb) : 0;
+            const lfsFreePct = totKb > 0 ? Math.round((freeKb * 100) / totKb) : 0;
+            lfsUsed.textContent = `${usedKb} KB / ${totKb} KB (Free: ${freeKb} KB, ${lfsFreePct}%)`;
           }
         }
 
@@ -698,7 +702,10 @@ class OrbitWebController {
           }
           if (freeSketch) {
             const frKb = Math.round(data.flash.free_sketch_bytes / 1024);
-            freeSketch.textContent = `${frKb} KB available`;
+            const skKb = Math.round(data.flash.sketch_bytes / 1024);
+            const totPartKb = skKb + frKb;
+            const freeSketchPct = totPartKb > 0 ? Math.round((frKb * 100) / totPartKb) : 0;
+            freeSketch.textContent = `${frKb} KB available (${freeSketchPct}% free)`;
           }
         }
 
@@ -710,9 +717,13 @@ class OrbitWebController {
           const psramStat = document.getElementById('diag-psram-status');
           const psramFree = document.getElementById('diag-psram-free');
 
-          if (heapFree) heapFree.textContent = `${Math.round(data.memory.heap_free / 1024)} KB`;
+          const hFreeKb = Math.round(data.memory.heap_free / 1024);
+          const hTotKb = Math.round(data.memory.heap_total / 1024);
+          const hFreePct = hTotKb > 0 ? Math.round((hFreeKb * 100) / hTotKb) : 0;
+
+          if (heapFree) heapFree.textContent = `${hFreeKb} KB (${hFreePct}% free)`;
           if (heapMin) heapMin.textContent = `${Math.round(data.memory.heap_min_free / 1024)} KB (watermark)`;
-          if (heapTot) heapTot.textContent = `${Math.round(data.memory.heap_total / 1024)} KB`;
+          if (heapTot) heapTot.textContent = `${hTotKb} KB`;
 
           if (psramStat) {
             psramStat.textContent = data.memory.psram_found
@@ -721,9 +732,14 @@ class OrbitWebController {
             psramStat.style.color = data.memory.psram_found ? 'var(--mint)' : 'var(--muted)';
           }
           if (psramFree) {
-            psramFree.textContent = data.memory.psram_found
-              ? `${Math.round(data.memory.psram_free / 1024)} KB`
-              : 'N/A';
+            if (data.memory.psram_found) {
+              const pFreeKb = Math.round(data.memory.psram_free / 1024);
+              const pTotKb = Math.round(data.memory.psram_total / 1024);
+              const pFreePct = pTotKb > 0 ? Math.round((pFreeKb * 100) / pTotKb) : 0;
+              psramFree.textContent = `${pFreeKb} KB (${pFreePct}% free)`;
+            } else {
+              psramFree.textContent = 'N/A';
+            }
           }
         }
 

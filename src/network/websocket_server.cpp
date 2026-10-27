@@ -54,16 +54,17 @@ void WebSocketServer::handleMessage(AsyncWebSocketClient* client, void* arg, uin
             const char* hexColor = doc["color"] | "#00FFFF";
             uint32_t color = (uint32_t)strtol(hexColor + (hexColor[0] == '#' ? 1 : 0), NULL, 16);
             RgbController::getInstance().setColor(color);
+        } else if (strcmp(cmd, "set_rgb_brightness") == 0) {
+            uint8_t b = doc["brightness"] | 180;
+            RgbController::getInstance().setBrightness(b);
         } else if (strcmp(cmd, "toast") == 0) {
             const char* title = doc["title"] | "Alert";
             const char* body = doc["body"] | "";
             uint32_t duration = doc["duration_ms"] | 3000;
             RenderEngine::getInstance().showToast(title, body, COLOR_NEON_CYAN, duration);
             IndicatorLed::getInstance().flashOnce(300);
-            RgbController::getInstance().triggerFlash(0x00FFFF, 300);
         } else if (strcmp(cmd, "find_device") == 0) {
             IndicatorLed::getInstance().setPattern(LED_BLINK_FAST);
-            RgbController::getInstance().triggerFlash(0xFF00FF, 1500);
         } else if (strcmp(cmd, "set_brightness") == 0) {
             uint8_t b = doc["val"] | 80;
             RenderEngine::getInstance().setBacklight(b);

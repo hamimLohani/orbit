@@ -1,7 +1,6 @@
 #include "src/apps/snake_app.h"
 #include "src/core/app_registry.h"
 #include "src/core/settings_manager.h"
-#include "src/lighting/rgb_controller.h"
 #include "src/display/theme.h"
 
 REGISTER_APP(SnakeApp);
@@ -198,9 +197,6 @@ void SnakeApp::triggerGameOver(const char* reason) {
         _highScore = _score;
         _newHighScore = true;
         saveHighScore(_selectedMode, _score);
-        RgbController::getInstance().triggerFlash(0xFFD700, 1000); // Gold celebration
-    } else {
-        RgbController::getInstance().triggerFlash(0xFF0000, 800);  // Red crash
     }
 }
 
@@ -339,7 +335,6 @@ void SnakeApp::tickGame() {
             _timeAttackRemaining += 3.0f; // +3s bonus per apple
         }
 
-        RgbController::getInstance().triggerFlash(0x00FF00, 200);
         spawnFood();
     }
 
@@ -359,32 +354,27 @@ void SnakeApp::handleItemPickup(SnakeItemType item) {
         case ITEM_SLOW:
             _slowTimer = 5.0f;
             _score += 20 * mult;
-            RgbController::getInstance().triggerFlash(0x00FFFF, 400);
             break;
 
         case ITEM_GHOST:
             _ghostTimer = 10.0f; // 10s Zen mode!
             _score += 20 * mult;
-            RgbController::getInstance().triggerFlash(0xD500F9, 500);
             break;
 
         case ITEM_3X:
             _multiplierTimer = 5.0f;
             _score += 30 * mult;
-            RgbController::getInstance().triggerFlash(0xFFD700, 400);
             break;
 
         case ITEM_SHRINK:
             _length = max(3, (int)_length / 2);
             _score += 15 * mult;
-            RgbController::getInstance().triggerFlash(0xFF6D00, 300);
             break;
 
         case ITEM_POISON:
             _score = max(0, _score - 30);
             _growing = true;     // +1 unrewarded length
             _poisonTimer = 5.0f; // 5s toxic speed surge
-            RgbController::getInstance().triggerFlash(0xFF0055, 600);
             break;
 
         default:
@@ -410,19 +400,9 @@ void SnakeApp::onRender(RenderEngine& gfx) {
             renderSnake(gfx);
             break;
         case SNAKE_STATE_PAUSED:
-            renderHUD(gfx);
-            renderArena(gfx);
-            renderObstacles(gfx);
-            renderItems(gfx);
-            renderSnake(gfx);
             renderPaused(gfx);
             break;
         case SNAKE_STATE_GAME_OVER:
-            renderHUD(gfx);
-            renderArena(gfx);
-            renderObstacles(gfx);
-            renderItems(gfx);
-            renderSnake(gfx);
             renderGameOver(gfx);
             break;
     }
@@ -558,77 +538,144 @@ void SnakeApp::renderSnake(RenderEngine& gfx) {
 }
 
 void SnakeApp::renderMenu(RenderEngine& gfx) {
-    gfx.drawHeader("SNAKE RETRO", 12);
+    gfx.drawHeader("SNAKE RETRO", 11);
 
-    // Main Settings Card - starts at STATUS_BAR_HEIGHT + 26 (y=40), cleanly below header line (y=37)
-    gfx.drawCard(8, STATUS_BAR_HEIGHT + 26, 112, 74, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
+    // Main Settings Card - starts at y=39, height 59 -> ends cleanly at 98
+    gfx.drawCard(8, 39, 112, 59, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
 
     // Row 0: Mode
     const char* modeNames[] = { "Classic", "TimeAtk", "Survive", "Zen" };
     uint16_t c0 = (_menuRow == 0) ? COLOR_NEON_CYAN : COLOR_TEXT_LIGHT;
-    gfx.drawText(14, STATUS_BAR_HEIGHT + 31, (_menuRow == 0 ? "> Mode:" : "  Mode:"), c0, 1);
-    gfx.drawTextRight(112, STATUS_BAR_HEIGHT + 31, modeNames[_selectedMode], (_menuRow == 0 ? COLOR_NEON_MINT : COLOR_TEXT_MUTED), 1);
+    gfx.drawText(14, 43, (_menuRow == 0 ? "> Mode:" : "  Mode:"), c0, 1);
+    gfx.drawTextRight(112, 43, modeNames[_selectedMode], (_menuRow == 0 ? COLOR_NEON_MINT : COLOR_TEXT_MUTED), 1);
 
     // Row 1: Obstacles
     uint16_t c1 = (_menuRow == 1) ? COLOR_NEON_CYAN : COLOR_TEXT_LIGHT;
-    gfx.drawText(14, STATUS_BAR_HEIGHT + 44, (_menuRow == 1 ? "> Mazes:" : "  Mazes:"), c1, 1);
-    gfx.drawTextRight(112, STATUS_BAR_HEIGHT + 44, (_obstaclesEnabled ? "ON" : "OFF"), (_obstaclesEnabled ? COLOR_NEON_AMBER : COLOR_TEXT_MUTED), 1);
+    gfx.drawText(14, 55, (_menuRow == 1 ? "> Mazes:" : "  Mazes:"), c1, 1);
+    gfx.drawTextRight(112, 55, (_obstaclesEnabled ? "ON" : "OFF"), (_obstaclesEnabled ? COLOR_NEON_AMBER : COLOR_TEXT_MUTED), 1);
 
     // Row 2: Difficulty
     const char* diffNames[] = { "Easy", "Normal", "Hard" };
     uint16_t c2 = (_menuRow == 2) ? COLOR_NEON_CYAN : COLOR_TEXT_LIGHT;
-    gfx.drawText(14, STATUS_BAR_HEIGHT + 57, (_menuRow == 2 ? "> Speed:" : "  Speed:"), c2, 1);
-    gfx.drawTextRight(112, STATUS_BAR_HEIGHT + 57, diffNames[_difficulty], (_menuRow == 2 ? COLOR_NEON_CYAN : COLOR_TEXT_MUTED), 1);
+    gfx.drawText(14, 67, (_menuRow == 2 ? "> Speed:" : "  Speed:"), c2, 1);
+    gfx.drawTextRight(112, 67, diffNames[_difficulty], (_menuRow == 2 ? COLOR_NEON_CYAN : COLOR_TEXT_MUTED), 1);
 
     // Row 3: Start Button Action
     uint16_t c3 = (_menuRow == 3) ? COLOR_NEON_MINT : COLOR_TEXT_MUTED;
-    gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 73, (_menuRow == 3 ? "[ START GAME ]" : "START GAME"), c3, 1);
+    gfx.drawTextCentered(64, 82, (_menuRow == 3 ? "[ START GAME ]" : "START GAME"), c3, 1);
 
-    // High Score Box - cleanly separated at y = 118, height 22 -> ends at 140
-    gfx.drawCard(8, STATUS_BAR_HEIGHT + 104, 112, 22, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
+    // High Score Box - starts at y=102, height 18 -> ends at 120
+    gfx.drawCard(8, 102, 112, 18, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
     char hiBuf[24];
     snprintf(hiBuf, sizeof(hiBuf), "RECORD: %d PTS", _highScore);
-    gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 111, hiBuf, COLOR_NEON_AMBER, 1);
+    gfx.drawTextCentered(64, 107, hiBuf, COLOR_NEON_AMBER, 1);
 
-    // Bottom Navigation Hint - 21 characters (126px), fits screen width 128px at y=150
-    gfx.drawTextCentered(64, SCREEN_HEIGHT - 10, "U/D:Nav L/R:Set OK:Go", COLOR_TEXT_MUTED, 1);
+    // Bottom Navigation Footer - 2 roomy non-overlapping lines with minimum 10px side margins
+    gfx.drawTextCentered(64, 127, "U/D:Nav   L/R:Edit", COLOR_TEXT_LIGHT, 1);
+    gfx.drawTextCentered(64, 141, "OK:Play   1s:Back", COLOR_TEXT_MUTED, 1);
 }
 
 void SnakeApp::renderPaused(RenderEngine& gfx) {
-    // Semi-opaque overlay box
-    gfx.fillRoundRect(16, 60, 96, 44, 4, COLOR_SLATE_DARK);
-    gfx.drawRoundRect(16, 60, 96, 44, 4, COLOR_NEON_CYAN);
+    gfx.drawHeader("GAME PAUSED", 11);
 
-    gfx.drawTextCentered(64, 68, "PAUSED", COLOR_NEON_CYAN, 2);
-    gfx.drawTextCentered(64, 88, "[OK] Resume  [<] Menu", COLOR_TEXT_LIGHT, 1);
+    // Hero Summary Card - starts at y=40, height 76 -> ends cleanly at 116
+    gfx.drawCard(8, 40, 112, 76, COLOR_SLATE_MID, COLOR_NEON_CYAN);
+
+    // Row 1: Session Status banner
+    gfx.drawTextCentered(64, 45, "SESSION ON HOLD", COLOR_NEON_AMBER, 1);
+
+    // Subtle divider line inside card
+    gfx.drawFastHLine(14, 56, 100, COLOR_SLATE_BORDER);
+
+    // Row 2: Current Score Section
+    gfx.drawTextCentered(64, 60, "CURRENT SCORE", COLOR_TEXT_MUTED, 1);
+    char sBuf[16];
+    snprintf(sBuf, sizeof(sBuf), "%d", _score);
+    gfx.drawTextCentered(64, 71, sBuf, COLOR_NEON_CYAN, 2);
+
+    // Row 3: Game Session Stats
+    if (_selectedMode == SNAKE_MODE_TIME_ATTACK) {
+        char timeBuf[24];
+        snprintf(timeBuf, sizeof(timeBuf), "TIME LEFT: %ds", (int)ceil(_timeAttackRemaining));
+        gfx.drawTextCentered(64, 90, timeBuf, COLOR_NEON_AMBER, 1);
+    } else {
+        char lenBuf[24];
+        snprintf(lenBuf, sizeof(lenBuf), "LENGTH: %d BLOCKS", (int)_length);
+        gfx.drawTextCentered(64, 90, lenBuf, COLOR_NEON_MINT, 1);
+    }
+
+    // Row 4: Mode & Difficulty
+    const char* modeNames[] = { "Classic", "TimeAtk", "Survive", "Zen" };
+    const char* diffNames[] = { "Easy", "Normal", "Hard" };
+    char modeBuf[24];
+    snprintf(modeBuf, sizeof(modeBuf), "%s | %s", modeNames[_selectedMode], diffNames[_difficulty]);
+    gfx.drawTextCentered(64, 103, modeBuf, COLOR_TEXT_MUTED, 1);
+
+    // Divider line at y=121
+    gfx.drawFastHLine(14, 121, 100, COLOR_SLATE_BORDER);
+
+    // Roomy Two-Line Footer Action Prompts (minimum 7-10px side margins, no bezel clipping)
+    gfx.drawTextCentered(64, 127, "[ OK: RESUME GAME ]", COLOR_NEON_MINT, 1);
+    gfx.drawTextCentered(64, 141, "<: Menu   1s: Back", COLOR_TEXT_MUTED, 1);
 }
 
 void SnakeApp::renderGameOver(RenderEngine& gfx) {
-    gfx.fillRoundRect(12, 45, 104, 76, 6, COLOR_SLATE_DARK);
-    gfx.drawRoundRect(12, 45, 104, 76, 6, _newHighScore ? COLOR_NEON_AMBER : COLOR_NEON_RED);
+    gfx.drawHeader("GAME OVER", 11);
 
-    gfx.drawTextCentered(64, 52, "GAME OVER", COLOR_NEON_RED, 2);
-    gfx.drawTextCentered(64, 70, _deathReason, COLOR_TEXT_MUTED, 1);
+    // Hero Summary Card - starts at y=40, height 76 -> ends cleanly at 116
+    uint16_t borderCol = _newHighScore ? COLOR_NEON_AMBER : COLOR_NEON_RED;
+    gfx.drawCard(8, 40, 112, 76, COLOR_SLATE_MID, borderCol);
 
-    char sBuf[24];
-    snprintf(sBuf, sizeof(sBuf), "Score: %d", _score);
-    gfx.drawTextCentered(64, 82, sBuf, COLOR_TEXT_LIGHT, 1);
+    // Row 1: Cause of Death banner
+    gfx.drawTextCentered(64, 45, _deathReason, COLOR_NEON_RED, 1);
 
+    // Subtle divider line inside card
+    gfx.drawFastHLine(14, 56, 100, COLOR_SLATE_BORDER);
+
+    // Row 2: Final Score Section
+    gfx.drawTextCentered(64, 60, "FINAL SCORE", COLOR_TEXT_MUTED, 1);
+    char sBuf[16];
+    snprintf(sBuf, sizeof(sBuf), "%d", _score);
+    gfx.drawTextCentered(64, 71, sBuf, _newHighScore ? COLOR_NEON_AMBER : COLOR_NEON_CYAN, 2);
+
+    // Row 3: Record / High Score Celebration
     if (_newHighScore) {
-        gfx.drawTextCentered(64, 93, "* NEW HIGH SCORE *", COLOR_NEON_AMBER, 1);
+        gfx.drawTextCentered(64, 90, "* NEW HIGH SCORE! *", COLOR_NEON_AMBER, 1);
     } else {
-        char hiBuf[20];
-        snprintf(hiBuf, sizeof(hiBuf), "Record: %d", _highScore);
-        gfx.drawTextCentered(64, 93, hiBuf, COLOR_TEXT_MUTED, 1);
+        char hiBuf[24];
+        snprintf(hiBuf, sizeof(hiBuf), "RECORD: %d PTS", _highScore);
+        gfx.drawTextCentered(64, 90, hiBuf, COLOR_TEXT_MUTED, 1);
     }
 
-    gfx.drawTextCentered(64, 107, "[OK] Retry  [<] Menu", COLOR_NEON_CYAN, 1);
+    // Row 4: Mode & Difficulty
+    const char* modeNames[] = { "Classic", "TimeAtk", "Survive", "Zen" };
+    const char* diffNames[] = { "Easy", "Normal", "Hard" };
+    char modeBuf[24];
+    snprintf(modeBuf, sizeof(modeBuf), "%s | %s", modeNames[_selectedMode], diffNames[_difficulty]);
+    gfx.drawTextCentered(64, 103, modeBuf, COLOR_TEXT_MUTED, 1);
+
+    // Divider line at y=121
+    gfx.drawFastHLine(14, 121, 100, COLOR_SLATE_BORDER);
+
+    // Roomy Two-Line Footer Action Prompts (minimum 10px side margins, no bezel clipping)
+    gfx.drawTextCentered(64, 127, "[ OK: PLAY AGAIN ]", COLOR_NEON_CYAN, 1);
+    gfx.drawTextCentered(64, 141, "<: Menu   1s: Back", COLOR_TEXT_MUTED, 1);
 }
 
 // ------------------------------------------------------------------------------
 // Input Handling
 // ------------------------------------------------------------------------------
 bool SnakeApp::onButtonEvent(const ButtonEvent& evt) {
+    // 1s Enter = 1 step back
+    if (evt.button == BTN_ID_ENTER && (evt.type == BUTTON_HOLD_1S || evt.type == BUTTON_HOLD_05S)) {
+        if (_state == SNAKE_STATE_PLAYING || _state == SNAKE_STATE_PAUSED || _state == SNAKE_STATE_GAME_OVER) {
+            resetToMenu();
+            RenderEngine::getInstance().showToast("SNAKE", "Back to Menu", COLOR_TEXT_MUTED, 800);
+            return true;
+        }
+        return false; // In Menu: allow AppRegistry to step back out of Snake to Home
+    }
+
     if (evt.type != BUTTON_CLICK && evt.type != BUTTON_REPEAT) return false;
 
     // 1. In Menu State
@@ -691,7 +738,7 @@ bool SnakeApp::onButtonEvent(const ButtonEvent& evt) {
         if (evt.button == BTN_ID_ENTER) {
             _state = SNAKE_STATE_PLAYING;
             return true;
-        } else if (evt.button == BTN_ID_LEFT) {
+        } else if (evt.button == BTN_ID_LEFT || evt.button == BTN_ID_DOWN || evt.button == BTN_ID_UP) {
             resetToMenu();
             return true;
         }
@@ -703,7 +750,7 @@ bool SnakeApp::onButtonEvent(const ButtonEvent& evt) {
         if (evt.button == BTN_ID_ENTER) {
             startNewGame();
             return true;
-        } else if (evt.button == BTN_ID_LEFT) {
+        } else if (evt.button == BTN_ID_LEFT || evt.button == BTN_ID_DOWN || evt.button == BTN_ID_UP) {
             resetToMenu();
             return true;
         }

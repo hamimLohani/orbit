@@ -11,7 +11,7 @@ public:
     ~LanderApp() override = default;
 
     AppMetadata getMetadata() const override {
-        return { "lander", "Lander", 9, false };
+        return { "lander", "Lander", 8, false };
     }
 
     void onInit() override;

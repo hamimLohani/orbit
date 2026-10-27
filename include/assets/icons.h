@@ -271,17 +271,16 @@ const uint8_t icon_snake_bits[] PROGMEM = {
 
 // Icon Array Pointer Lookup
 static const uint8_t* const SYSTEM_ICONS[] PROGMEM = {
-    icon_home_bits,
-    icon_aura_bits,
-    icon_spectrum_bits,
-    icon_climate_bits,
-    icon_focus_bits,
-    icon_recorder_bits,
-    icon_astro_bits,
-    icon_signal_bits,
-    icon_lights_bits,
-    icon_lander_bits,
-    icon_network_bits,
-    icon_system_bits,
-    icon_snake_bits
+    icon_home_bits,       // 0
+    icon_aura_bits,       // 1
+    icon_climate_bits,    // 2
+    icon_focus_bits,      // 3
+    icon_recorder_bits,   // 4
+    icon_astro_bits,      // 5
+    icon_signal_bits,     // 6
+    icon_lights_bits,     // 7
+    icon_lander_bits,     // 8
+    icon_network_bits,    // 9
+    icon_system_bits,     // 10
+    icon_snake_bits       // 11
 };

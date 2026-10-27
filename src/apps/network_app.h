@@ -11,7 +11,7 @@ public:
     ~NetworkApp() override = default;
 
     AppMetadata getMetadata() const override {
-        return { "network", "Network", 10, false };
+        return { "network", "Network", 9, false };
     }
 
     void onInit() override;

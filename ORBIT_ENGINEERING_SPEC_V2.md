@@ -68,7 +68,7 @@ All pin assignments are strictly centralized in `include/config.h`. No hardcoded
 #define PIN_BTN_DOWN          3    // Directional DOWN
 #define PIN_BTN_LEFT          17   // Directional LEFT (was Back)
 #define PIN_BTN_RIGHT         18   // Directional RIGHT (was Select)
-#define PIN_BTN_ENTER         16   // Enter / Action (.5s=Back, 2.0s=Home)
+#define PIN_BTN_ENTER         16   // Enter / Action (1s=1 Step Back, 3s=Home)
 ```
 
 ### 2.3 SPI Bus Arbitration Protocol (ST7735 & MicroSD)
@@ -132,14 +132,10 @@ In addition to the baseline features, ORBIT v2 integrates seven major advanced c
   - Mic Sound > 75dB: Perks ears up or grooves to rhythm.
   - Darkness / Night (NTP > 23:00): Enters deep slumber with floating `zZz` and soft breathing amber RGB.
 
-### 4.2 Real-Time 16-Band DSP Audio Spectrum Visualizer
-- **INMP441 DMA Continuous Sampling**: 16kHz / 32-bit sample collection via I2S DMA.
-- **Hardware-Accelerated FFT**: Computes 16 frequency bins across 60Hz – 8kHz.
-- **Visualizer Display Modes**:
-  1. *Peak Bar Graph*: 16 responsive vertical bars with gravity-decay peak hold markers.
-  2. *Phosphor VU Needle*: Dual stereo-style analog ballistic meters.
-  3. *Cosmic Radial Pulse*: Concentric rings that expand with bass transients.
-  4. *Oscilloscope Waveform*: Direct raw audio time-domain display.
+### 4.2 Environmental & Climate Telemetry
+- **DHT11 Dual Real-Time Telemetry**: Real-time temperature (°C/°F) and relative humidity (%) acquisition.
+- **Microclimate Analysis**: Auto-calculated heat index and thermal comfort classification pill.
+- **24-Point Live Trend Sparkline**: Symmetrical display metrics with live auto-scaled historical curve.
 
 ### 4.3 Flow & Focus Productivity System (Smart Pomodoro + Noise Sentinel)
 - **Visual Orbital Timer**: Crisp circular orbital progress ring counting down focus and rest cycles.
@@ -172,17 +168,16 @@ In addition to the baseline features, ORBIT v2 integrates seven major advanced c
 | :--- | :--- | :--- | :--- |
 | `00` | **Home** | `ICON_HOME` | Primary dashboard: Orbiting ring animation, live clock, temperature, ambient decibel gauge, mood text. |
 | `01` | **Aura** | `ICON_AURA` | Interactive virtual companion & emotion engine with ambient reactions. |
-| `02` | **Spectrum** | `ICON_SPECTRUM`| 16-band real-time audio FFT analyzer and phosphor VU visualizer. |
-| `03` | **Climate** | `ICON_CLIMATE` | DHT11 telemetry, comfort index, humidity gauge, and rolling 24-sample sparkline history. |
-| `04` | **Focus** | `ICON_FOCUS` | Pomodoro focus timer with visual circular ring and background noise distraction sentinel. |
-| `05` | **Recorder** | `ICON_MIC` | Voice memo audio recorder to SD card (`.wav`) with recording waveform HUD. |
-| `06` | **Astro** | `ICON_ASTRO` | Lunar phase visualizer, ISS pass tracker, and space telemetry. |
-| `07` | **Signal** | `ICON_SIGNAL` | Notification center, webhook push listener, and manual beacon trigger. |
-| `08` | **Lights** | `ICON_LIGHTS` | WS2812 RGB lighting controller (Ambient, Disco, Flame, Breathe, Solid Picker). |
-| `09` | **Lander** | `ICON_GAME` | Retro vector lunar lander physics arcade game. |
-| `10` | **Network** | `ICON_WIFI` | Wi-Fi scanner, RSSI signal meter, NTP synchronization status, IP/mDNS info, OTA trigger. |
-| `11` | **System** | `ICON_SYSTEM` | Display backlight slider, 5-page hardware diagnostics (Storage, Silicon ID, Memory, Flash, Network), factory reset. |
-| `12` | **Snake**  | `ICON_SNAKE`  | Full port of Snake CLI: Classic, Time Attack, Survival, Zen modes, 6 power-ups/hazards, anti-suicide FIFO queue, persistent high scores. |
+| `02` | **Climate** | `ICON_CLIMATE` | DHT11 dual symmetrical telemetry cards, live humidity progress bar, comfort badge pill, and 24-point auto-scaled trend sparkline. |
+| `03` | **Focus** | `ICON_FOCUS` | Pomodoro focus timer with visual circular ring and background noise distraction sentinel. |
+| `04` | **Recorder** | `ICON_MIC` | Voice memo audio recorder to SD card (`.wav`) with recording waveform HUD. |
+| `05` | **Astro** | `ICON_ASTRO` | Lunar phase visualizer, ISS pass tracker, and space telemetry. |
+| `06` | **Signal** | `ICON_SIGNAL` | Notification center, webhook push listener, and manual beacon trigger. |
+| `07` | **Lights** | `ICON_LIGHTS` | Dedicated WS2812 RGB lighting controller with instant Power toggle, mode cycling (Ambient, Disco, Breathe, Rainbow, Solid, Alert), brightness bar, and custom solid RGB Studio mixer with granular R, G, B (0-255) channel sliders and live preview swatch. |
+| `08` | **Lander** | `ICON_GAME` | Retro vector lunar lander physics arcade game. |
+| `09` | **Network** | `ICON_WIFI` | Wi-Fi scanner, RSSI signal meter, NTP synchronization status, IP/mDNS info, OTA trigger. |
+| `10` | **System** | `ICON_SYSTEM` | Display backlight slider, 8-page hardware diagnostics with zero overlap (OS Platform & Backlight, Processor Silicon, Device ID & MAC, SRAM Heap with free %, External PSRAM with free %, SPI Flash ROM & Partition, Storage: LittleFS & MicroSD with free %, and TCP/IP Network). |
+| `11` | **Snake**  | `ICON_SNAKE`  | Full port of Snake CLI: Classic, Time Attack, Survival, Zen modes, 6 power-ups/hazards, anti-suicide FIFO queue, persistent high scores. |
 
 ---
 
@@ -245,9 +240,22 @@ Adding a new app to ORBIT in the future requires exactly **3 lines of registrati
 REGISTER_APP(MyCustomApp);
 ```
 
-### 6.3 Dynamic Carousel Navigation
+### 6.3 Dynamic Carousel Navigation & Button Routing Contract
 
-The `AppRegistry` maintains the active app list, manages memory, executes smooth horizontal card transitions, and routes button presses to the current active app. Holding `BTN_ENTER` for 1.0s (`BUTTON_HOLD_1S`) cleanly transitions back to the previous screen or launcher; holding `BTN_ENTER` for 2.5s (`BUTTON_HOLD_2S`) returns directly to the Home Dashboard from anywhere. Directional buttons `BTN_LEFT` and `BTN_RIGHT` navigate between apps in the carousel.
+The `AppRegistry` enforces a strict hierarchical navigation hierarchy to prevent accidental app-switching:
+1. **Inside an Active App (`_activeIndex != 0`, `_inCarousel == false`)**:
+   - Directional buttons `BTN_LEFT` and `BTN_RIGHT` belong strictly to the active app for internal controls (e.g., steering the snake, adjusting brightness/color palette, navigating diagnostic pages, or lander thrusters).
+   - If an active app does not consume `LEFT` or `RIGHT`, the buttons perform no action. **Pressing `L/R` inside an app will NEVER change apps or switch menus.**
+2. **Backing to the Launcher Menu**:
+   - Holding `BTN_ENTER` for 1.0s (`BUTTON_HOLD_1S`) executes **1 step back**:
+     - *In-App Sub-states*: Allows active apps to step back internally (e.g. game over / playing -> game menu, subpages -> page 0).
+     - *App Root Level*: Backs out of the active app into the **OS Launcher Menu Carousel** (`_inCarousel = true`), highlighting the active app's card.
+3. **Menu Option Selection**:
+   - Once backed out to the Launcher Menu (`_inCarousel == true`), **`BTN_LEFT` and `BTN_RIGHT` change the selected menu option (`_carouselIndex`)**.
+   - Pressing `BTN_ENTER` opens and activates the selected app.
+   - Holding `BTN_ENTER` for 1.0s closes the Launcher Menu and returns to the Home Dashboard.
+4. **Instant Home Return**:
+   - Holding `BTN_ENTER` for 3.0s (`BUTTON_HOLD_3S`) returns directly to the Home Dashboard from anywhere across the entire operating system unconditionally.
 
 ### 6.4 Display Viewport & Coordinate Standards (128x160 Portrait)
 
@@ -264,12 +272,38 @@ All apps and render routines adhere to a unified UI coordinate grid to prevent s
 - **Secondary Content Card (Card 2)**:
   - Standard Placement: `x = 8`, `y = STATUS_BAR_HEIGHT + 76` (90), `width = 112`, `height = 42..46` (ends at `y = 132..136`).
   - Leaves a clean 4px gap below Card 1.
-- **Bottom Navigation Footer**:
-  - Standard Placement: `y = SCREEN_HEIGHT - 10` (150), font size 1 (occupies `y = 150..157`), centered at `x = 64`.
-  - Max text length at size 1: **21 characters** (126px width, centered with 1px padding on display edges).
+- **Bottom Navigation Footer & Menu Navigation Standards**:
+  - **Single-Line Footers**: Placed at `y = 146..148` (e.g. `SystemApp`, `LightsApp`, `ClimateApp`), leaving a generous 10px clear air gap below content cards (which end at `y <= 136`). Max text length at size 1: **19 characters** (114px width, centered at `x = 64` with 7px margins on display edges to prevent bezel clipping).
+  - **Two-Line Menu Footers**: In interactive menus (`AppRegistry` Carousel Launcher and `SnakeApp` Retro Menu), content cards and badge boxes terminate cleanly at `y <= 108..120`:
+    - Line 1 placed at `y = 127..129` (e.g. `< L / R >  OK: Open` or `U/D:Nav   L/R:Edit`), length <= 19 chars (114px width, 7px side margins).
+    - Line 2 placed at `y = 141..143` (e.g. `1s: Back   3s: Home` or `OK:Play   1s:Back`), length <= 19 chars (114px width, 7px side margins).
+    - In `AppRegistry`, line 2 is dynamically guarded when voice recording HUD banner is active, preventing overlay collision.
+- **Game Over & Pause Screen UI Standards**:
+  - **Full-Screen Game Over Pages**: Games transition into a clean, dedicated full-page Game Over screen rather than drawing opaque popups over cluttered arena grids.
+  - **Summary Hero Card**: `x = 8`, `y = 40`, `width = 112`, `height = 76` (terminates cleanly at `y = 116`). Contains death cause banner (`COLOR_NEON_RED`), final score in size 2 font (`COLOR_NEON_CYAN` or `COLOR_NEON_AMBER`), record / high-score celebration indicator, and active mode/difficulty summary. Border accent flashes `COLOR_NEON_AMBER` on record breaks.
+  - **Action Controls**: `[ OK: PLAY AGAIN ]` at `y = 127` and `<: Menu   1s: Back` at `y = 141`, with minimum 10px side margins to prevent bezel clipping. Directional buttons (`LEFT`, `DOWN`, `UP`) and 1s hold on Enter cleanly return to the game menu.
+  - **Full-Screen Paused Pages**: Rather than drawing floating modal overlays over cluttered arena grids, the game transitions into a clean, dedicated full-page pause state (`GAME PAUSED` header). It renders an active session summary card (`x = 8`, `y = 40`, `width = 112`, `height = 76`), showcasing current score in size 2 font (`COLOR_NEON_CYAN`), live snake length or time attack remaining, and active mode/difficulty. Action footer provides `[ OK: RESUME GAME ]` (`COLOR_NEON_MINT`) and `<: Menu   1s: Back` (`COLOR_TEXT_MUTED`) with 10px side margins. Directional buttons (`LEFT`, `DOWN`, `UP`) and 1s hold on Enter cleanly return to the menu, while 3s hold on Enter returns Home.
 - **Dial / Circular Gauges**:
   - Gauges with centers at `y = 58..62` must constrain radii to `r <= 21` pixels so circumference arcs never intersect the header divider line (`y = 37`).
   - Needle meters (e.g. VU ballistics) must draw upper sweep arcs only rather than 360° full circles to prevent crossing bottom footer text.
+- **Persistent Hardware Backlight & RGB Retention**:
+  - Display backlight duty cycle (0-100%) and RGB LED brightness (0-255) are stored in ESP32 NVS flash preferences (`SettingsManager`) and automatically restored during `RenderEngine::init()` and `RgbController::init()`, preserving user brightness preferences across power cycles and reboots.
+- **Exclusive Isolated RGB Lighting Control Architecture**:
+  - WS2812 addressable RGB lighting (`PIN_RGB_LED` GPIO 48) is strictly handled and controlled within the dedicated **Lights App** (`LightsApp`) and the Web Companion RGB Studio.
+  - Default boot state defaults to `RGB_OFF` (`0`), preventing the light from turning on unsolicited after boot or reset.
+  - All non-lighting applications (`SnakeApp`, `LanderApp`, `FocusApp`, `CompanionApp`, `SignalApp`) and incoming toast notifications are completely decoupled from the RGB LED. No other app can illuminate, override, or flash the RGB neo-pixel.
+  - In `RgbController`, any flash triggers are strictly ignored while the light is in `RGB_OFF` mode, guaranteeing that turning off the light in the Lights section keeps the LED completely dark across the entire OS.
+- **Custom Solid RGB Studio Mixer Controls (`LightsApp`)**:
+  - In `RGB_SOLID` ("CUSTOM SOLID") mode, the app switches from the standard 2-card layout into the high-precision 5-field **RGB Studio Mixer**:
+    - **Card 0 (Mode & Live Preview Swatch)** (`y = 41..66`, height 25): Shows Mode title on the left and a live, real-time 32×19px rounded RGB565 color preview swatch on the right with a crisp white border, instantly reflecting blended channel outputs.
+    - **Card 1 (Studio Mixer Sliders)** (`y = 68..136`, height 68): Houses 4 individual 50px pill-slider rows with numeric readouts and color-coded indicator tracks:
+      - **Field 1 (`BRT`)**: Overall LED brightness scaling (0–100%, 0–255).
+      - **Field 2 (`RED`)**: Red channel intensity (0–255, step ±15 on `L/R`, quick toggle 0/128/255 on `OK`) with `COLOR_NEON_RED` track.
+      - **Field 3 (`GRN`)**: Green channel intensity (0–255, step ±15 on `L/R`, quick toggle 0/128/255 on `OK`) with `COLOR_NEON_MINT` track.
+      - **Field 4 (`BLU`)**: Blue channel intensity (0–255, step ±15 on `L/R`, quick toggle 0/128/255 on `OK`) with `COLOR_NEON_CYAN` track.
+    - **Active Row Highlighting**: Active row renders a 2px left neon indicator, `>` cursor, glowing value/label text, and an illuminated 1px border around its slider track.
+    - **Footer Hints**: Single-line guidance at `y = 146` (`OK:Power L/R:Mode`, `L/R:Dim OK:Jump`, `L/R:Red/Green/Blue OK:Toggle`).
+    - **Back Navigation**: 1.0s Enter hold steps back from channel mixing to Field 0 (Mode); pressing 1.0s Enter on Field 0 returns to the Launcher Menu; 3.0s Enter hold returns Home.
 
 ---
 
@@ -368,7 +402,6 @@ orbit/
 │   │   │   └── template_app.cpp
 │   │   ├── home_app.h/.cpp         # Live orbiting home dashboard
 │   │   ├── companion_app.h/.cpp    # Aura interactive emotion engine
-│   │   ├── spectrum_app.h/.cpp     # 16-band audio FFT visualizer
 │   │   ├── climate_app.h/.cpp      # DHT11 environmental monitor
 │   │   ├── focus_app.h/.cpp        # Pomodoro & Noise Sentinel
 │   │   ├── recorder_app.h/.cpp     # Voice memo SD WAV recorder

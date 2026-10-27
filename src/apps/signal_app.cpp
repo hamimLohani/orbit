@@ -1,7 +1,6 @@
 #include "src/apps/signal_app.h"
 #include "src/core/app_registry.h"
 #include "src/lighting/indicator_led.h"
-#include "src/lighting/rgb_controller.h"
 #include "src/display/theme.h"
 
 REGISTER_APP(SignalApp);
@@ -19,7 +18,7 @@ void SignalApp::onUpdate(uint32_t deltaMs) {}
 
 void SignalApp::onRender(RenderEngine& gfx) {
     gfx.fillRect(0, STATUS_BAR_HEIGHT, SCREEN_WIDTH, CONTENT_HEIGHT, COLOR_VOID_DARK);
-    gfx.drawHeader("SIGNAL / ALERTS", 7);
+    gfx.drawHeader("SIGNAL / ALERTS", 6);
 
     // Alert Status Card (starts at y=40, height 48 -> ends at y=88)
     gfx.drawCard(8, STATUS_BAR_HEIGHT + 26, 112, 48, COLOR_SLATE_MID, _strobeActive ? COLOR_NEON_RED : COLOR_SLATE_BORDER);
@@ -48,11 +47,9 @@ bool SignalApp::onButtonEvent(const ButtonEvent& evt) {
         _strobeActive = !_strobeActive;
         if (_strobeActive) {
             IndicatorLed::getInstance().setPattern(LED_BLINK_FAST);
-            RgbController::getInstance().setMode(RGB_ALERT);
             RenderEngine::getInstance().showToast("ALERT BEACON", "Beacon Strobe Triggered", COLOR_NEON_RED, 3000);
         } else {
             IndicatorLed::getInstance().setPattern(LED_OFF);
-            RgbController::getInstance().setMode(RGB_OFF);
         }
         return true;
     }

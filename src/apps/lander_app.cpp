@@ -1,6 +1,5 @@
 #include "src/apps/lander_app.h"
 #include "src/core/app_registry.h"
-#include "src/lighting/rgb_controller.h"
 #include "src/display/theme.h"
 
 REGISTER_APP(LanderApp);
@@ -59,10 +58,8 @@ void LanderApp::onUpdate(uint32_t deltaMs) {
         if (_posX >= padX1 && _posX <= padX2 && fabs(_velY) < 1.8f && fabs(_velX) < 0.8f) {
             _landed = true;
             _score += 100 + (int)_fuel;
-            RgbController::getInstance().triggerFlash(0x00FF00, 800);
         } else {
             _gameOver = true;
-            RgbController::getInstance().triggerFlash(0xFF0000, 800);
         }
     }
 }

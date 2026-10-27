@@ -11,7 +11,7 @@ public:
     ~AstroApp() override = default;
 
     AppMetadata getMetadata() const override {
-        return { "astro", "Astro", 6, false };
+        return { "astro", "Astro", 5, false };
     }
 
     void onInit() override;
