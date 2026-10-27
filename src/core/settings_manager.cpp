@@ -69,6 +69,14 @@ void SettingsManager::setPomodoroFocusMins(uint16_t mins) {
     _prefs.putUShort("pomo_focus", mins);
 }
 
+uint16_t SettingsManager::getPomodoroBreakMins() {
+    return _prefs.getUShort("pomo_break", 5);
+}
+
+void SettingsManager::setPomodoroBreakMins(uint16_t mins) {
+    _prefs.putUShort("pomo_break", mins);
+}
+
 int SettingsManager::getAppInt(const char* appId, const char* key, int defaultVal) {
     String prefKey = String(appId) + "_" + String(key);
     return _prefs.getInt(prefKey.c_str(), defaultVal);

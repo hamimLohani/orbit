@@ -14,6 +14,10 @@ enum RgbLightingMode {
     RGB_RAINBOW,       // Smooth HSV hue rotation
     RGB_SOLID,         // Static custom color
     RGB_ALERT,         // Flashing red alert
+    RGB_DISCO_ALERT,   // Sound-reactive beat strobe & party alert
+    RGB_CANDLE,        // Organic warm flickering flame / campfire
+    RGB_AURORA,        // Ethereal northern lights wave
+    RGB_POLICE,        // High-visibility emergency red/blue strobe
     RGB_MODE_MAX
 };
 

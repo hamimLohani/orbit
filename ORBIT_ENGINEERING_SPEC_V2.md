@@ -139,7 +139,14 @@ In addition to the baseline features, ORBIT v2 integrates seven major advanced c
 
 ### 4.3 Flow & Focus Productivity System (Smart Pomodoro + Noise Sentinel)
 - **Visual Orbital Timer**: Crisp circular orbital progress ring counting down focus and rest cycles.
-- **Noise Sentinel**: Continuously evaluates background noise. If ambient noise exceeds the user-configured focus threshold (e.g., 65dB) for more than 5 seconds, an alert pops up: *"High Distraction Alert"*.
+- **Interactive Timer Edit System**:
+  - Direct quick adjustments from IDLE: `LEFT` / `RIGHT` adjust Focus session duration by ±5 minutes on the fly with real-time dial and NVS persistence.
+  - Dedicated **Edit Timer Mode** (`UP` / `DOWN` in IDLE): 3-card configuration studio with active row highlighting:
+    - **Focus Time Slider**: Custom work interval from 1 to 90 minutes with 104px progress bar indicator.
+    - **Short Break Slider**: Custom rest interval from 1 to 30 minutes with 104px progress bar indicator.
+    - **Quick Presets**: Instant one-click presets (`25m POMO`, `15m SPRINT`, `45m DEEP`, `60m POWER`).
+  - Saved preferences stored in NVS flash via `SettingsManager` (`pomo_focus`, `pomo_break`) and restored at boot.
+- **Noise Sentinel**: Continuously evaluates background noise. If ambient noise exceeds the user-configured focus threshold (e.g., 65dB) for more than 4 seconds, an alert pops up: *"High Distraction Alert"*.
 - **RGB Mood Cues**: Soft breathing emerald for deep work, gentle lavender for break intervals, pulsing crimson for noise alerts.
 
 ### 4.4 Space & Astro Telemetry Dashboard
@@ -169,13 +176,13 @@ In addition to the baseline features, ORBIT v2 integrates seven major advanced c
 | `00` | **Home** | `ICON_HOME` | Primary dashboard: Orbiting ring animation, live clock, temperature, ambient decibel gauge, mood text. |
 | `01` | **Aura** | `ICON_AURA` | Interactive virtual companion & emotion engine with ambient reactions. |
 | `02` | **Climate** | `ICON_CLIMATE` | DHT11 dual symmetrical telemetry cards, live humidity progress bar, comfort badge pill, and 24-point auto-scaled trend sparkline. |
-| `03` | **Focus** | `ICON_FOCUS` | Pomodoro focus timer with visual circular ring and background noise distraction sentinel. |
+| `03` | **Focus** | `ICON_FOCUS` | Pomodoro focus timer with visual circular ring, background noise distraction sentinel, and interactive Timer Edit System (Focus duration 1-90m, Break 1-30m, and Quick Presets). |
 | `04` | **Recorder** | `ICON_MIC` | Voice memo audio recorder to SD card (`.wav`) with recording waveform HUD. |
 | `05` | **Astro** | `ICON_ASTRO` | Lunar phase visualizer, ISS pass tracker, and space telemetry. |
 | `06` | **Signal** | `ICON_SIGNAL` | Notification center, webhook push listener, and manual beacon trigger. |
 | `07` | **Lights** | `ICON_LIGHTS` | Dedicated WS2812 RGB lighting controller with instant Power toggle, mode cycling (Ambient, Disco, Breathe, Rainbow, Solid, Alert), brightness bar, and custom solid RGB Studio mixer with granular R, G, B (0-255) channel sliders and live preview swatch. |
 | `08` | **Lander** | `ICON_GAME` | Retro vector lunar lander physics arcade game. |
-| `09` | **Network** | `ICON_WIFI` | Wi-Fi scanner, RSSI signal meter, NTP synchronization status, IP/mDNS info, OTA trigger. |
+| `09` | **Network** | `ICON_WIFI` | Dual-page network hub: Page 1 (STA/AP connection, IP/mDNS, NTP time) and Page 2 (Over-The-Air Flasher status, Web Flasher URL `http://orbit.local/update`, real-time TFT progress bar during Wi-Fi firmware flashing). |
 | `10` | **System** | `ICON_SYSTEM` | Display backlight slider, 8-page hardware diagnostics with zero overlap (OS Platform & Backlight, Processor Silicon, Device ID & MAC, SRAM Heap with free %, External PSRAM with free %, SPI Flash ROM & Partition, Storage: LittleFS & MicroSD with free %, and TCP/IP Network). |
 | `11` | **Snake**  | `ICON_SNAKE`  | Full port of Snake CLI: Classic, Time Attack, Survival, Zen modes, 6 power-ups/hazards, anti-suicide FIFO queue, persistent high scores. |
 
@@ -267,13 +274,13 @@ All apps and render routines adhere to a unified UI coordinate grid to prevent s
   - Title: `x = 24`, `y = STATUS_BAR_HEIGHT + 7` (21..28)
   - Header Divider Line: `y = STATUS_BAR_HEIGHT + 23` (37)
 - **Primary Content Card (Card 1)**:
-  - Standard Placement: `x = 8`, `y = STATUS_BAR_HEIGHT + 26` (40), `width = 112`, `height = 42..48` (ends at `y = 82..88`).
-  - Leaves a clean 3px margin below the header divider line (`y = 37`).
+  - Standard Placement: `x = 6..8`, `y = STATUS_BAR_HEIGHT + 25..26` (39..40), `width = 112..116`, `height = 42..48` (ends at `y = 82..88`).
+  - Leaves a clean margin below the header divider line (`y = 37`).
 - **Secondary Content Card (Card 2)**:
-  - Standard Placement: `x = 8`, `y = STATUS_BAR_HEIGHT + 76` (90), `width = 112`, `height = 42..46` (ends at `y = 132..136`).
-  - Leaves a clean 4px gap below Card 1.
+  - Standard Placement: `x = 6..8`, `y = STATUS_BAR_HEIGHT + 75..76` (89..90), `width = 112..116`, `height = 42..48` (ends at `y = 132..137`).
+  - Leaves a clean 2..4px gap below Card 1.
 - **Bottom Navigation Footer & Menu Navigation Standards**:
-  - **Single-Line Footers**: Placed at `y = 146..148` (e.g. `SystemApp`, `LightsApp`, `ClimateApp`), leaving a generous 10px clear air gap below content cards (which end at `y <= 136`). Max text length at size 1: **19 characters** (114px width, centered at `x = 64` with 7px margins on display edges to prevent bezel clipping).
+  - **Single-Line Footers**: Placed at `y = 146..148` (e.g. `SystemApp`, `LightsApp`, `ClimateApp`), leaving a generous 9..10px clear air gap below content cards (which end at `y <= 137`). Max text length at size 1: **19 characters** (114px width, centered at `x = 64` with 7px margins on display edges to prevent bezel clipping).
   - **Two-Line Menu Footers**: In interactive menus (`AppRegistry` Carousel Launcher and `SnakeApp` Retro Menu), content cards and badge boxes terminate cleanly at `y <= 108..120`:
     - Line 1 placed at `y = 127..129` (e.g. `< L / R >  OK: Open` or `U/D:Nav   L/R:Edit`), length <= 19 chars (114px width, 7px side margins).
     - Line 2 placed at `y = 141..143` (e.g. `1s: Back   3s: Home` or `OK:Play   1s:Back`), length <= 19 chars (114px width, 7px side margins).
@@ -288,6 +295,7 @@ All apps and render routines adhere to a unified UI coordinate grid to prevent s
   - Needle meters (e.g. VU ballistics) must draw upper sweep arcs only rather than 360° full circles to prevent crossing bottom footer text.
 - **Persistent Hardware Backlight & RGB Retention**:
   - Display backlight duty cycle (0-100%) and RGB LED brightness (0-255) are stored in ESP32 NVS flash preferences (`SettingsManager`) and automatically restored during `RenderEngine::init()` and `RgbController::init()`, preserving user brightness preferences across power cycles and reboots.
+  - Backlight duty mapping enforces a hardware duty floor (`TFT_BACKLIGHT_MIN_DUTY = 20` out of 255) at 0% brightness, guaranteeing that 0% dims the screen to a comfortable low-light level without ever completely shutting off the screen or blacking out navigation.
 - **Exclusive Isolated RGB Lighting Control Architecture**:
   - WS2812 addressable RGB lighting (`PIN_RGB_LED` GPIO 48) is strictly handled and controlled within the dedicated **Lights App** (`LightsApp`) and the Web Companion RGB Studio.
   - Default boot state defaults to `RGB_OFF` (`0`), preventing the light from turning on unsolicited after boot or reset.
@@ -318,7 +326,11 @@ Served directly from ESP32-S3 LittleFS / SPIFFS or hosted externally via mDNS (`
 4. **Voice Memo Hub**: Lists `.wav` recordings on the SD card, provides an HTML5 audio player with waveform preview, and provides a direct hook to Whisper AI / Gemini API.
 5. **Asset Studio**: Client-side canvas utility allowing users to upload any PNG/JPEG image. The browser automatically crops, resizes to 128×160, converts to 16-bit RGB565 BMP, and streams the binary over WebSocket straight into SD card `/images/wallpapers/`.
 6. **Notification Transmitter**: Form to push high-priority toast messages to the device screen with custom RGB chime colors.
-7. **Firmware OTA Manager**: Web-based binary upload form for over-the-air firmware upgrades.
+7. **Firmware OTA & File Upload Studio**:
+   - Web-based binary flasher served at `http://orbit.local/update` and embedded inside Settings (`#tab-settings`).
+   - Supports flashing compiled firmware (`U_FLASH`) and filesystem images (`U_SPIFFS`) over Wi-Fi with real-time transfer progress, byte tracking, and automatic safe reboot.
+   - Rest API (`POST /api/files/upload`) for transferring arbitrary files (wallpapers, web assets, configs, audio) directly to MicroSD card or LittleFS over Wi-Fi.
+   - Developer CLI automation scripts (`tools/compile_and_upload.sh` and `tools/upload_file.sh`) to compile via `arduino-cli` / `pio` and deploy over Wi-Fi in a single command.
 
 ### 7.2 WebSocket Protocol Specification
 

@@ -157,6 +157,89 @@ void RgbController::update() {
             break;
         }
 
+        case RGB_DISCO_ALERT: {
+            // Sound-reactive beat strobe & party alert
+            // Reacts dynamically to bass energy (FFT bands 0-1) and sound pressure (micDb)
+            bool isBassBeat = (telem.fftBands[0] > 120 || telem.fftBands[1] > 120);
+            bool isLoudAlert = (telem.micDb > 62.0f || telem.noiseDistraction);
+
+            if (isBassBeat || isLoudAlert) {
+                // High-energy chromatic strobe: fast bursts through intense neon hues
+                uint8_t strobeStep = (now / 40) % 4;
+                switch (strobeStep) {
+                    case 0: writePixel(255, 0, 90); break;    // Neon Hot Pink / Red
+                    case 1: writePixel(0, 240, 255); break;   // Electric Cyan
+                    case 2: writePixel(255, 230, 20); break;  // Strobe Gold
+                    case 3: writePixel(255, 255, 255); break; // Blinding White Flash
+                }
+            } else {
+                // Dynamic audio-sensitive groove: hue cycles faster with volume
+                float dbNorm = (telem.micDb - 35.0f) / 45.0f;
+                if (dbNorm < 0.05f) dbNorm = 0.05f;
+                if (dbNorm > 1.0f) dbNorm = 1.0f;
+
+                uint8_t hueStep = 2 + (uint8_t)(dbNorm * 6.0f);
+                _hue = (_hue + hueStep) % 360;
+                uint8_t val = 45 + (uint8_t)(dbNorm * 210.0f);
+                uint8_t r, g, b;
+                hsvToRgb(_hue, 255, val, r, g, b);
+                writePixel(r, g, b);
+            }
+            break;
+        }
+
+        case RGB_CANDLE: {
+            // Organic warm flickering flame / campfire
+            static uint32_t lastFlickerTime = 0;
+            static uint8_t flickerJitter = 180;
+            if (now - lastFlickerTime > 40) {
+                lastFlickerTime = now;
+                flickerJitter = 135 + (rand() % 120); // 135 to 254
+            }
+            _breathePhase += 0.035f;
+            if (_breathePhase > 6.283f) _breathePhase -= 6.283f;
+            float slowSway = 0.82f + 0.18f * sin(_breathePhase);
+
+            uint8_t v = (uint8_t)(flickerJitter * slowSway);
+            // Flame color palette: Red=max, Green=110..130, Blue=10..20
+            uint8_t r = v;
+            uint8_t g = (v * 125) / 255;
+            uint8_t b = (v * 15) / 255;
+            writePixel(r, g, b);
+            break;
+        }
+
+        case RGB_AURORA: {
+            // Ethereal northern lights: slow drifting wave between mint green, cyan, and violet
+            _breathePhase += 0.015f;
+            if (_breathePhase > 6.283f) _breathePhase -= 6.283f;
+
+            // Oscillate hue between 135 (mint green) and 280 (violet)
+            float wave = 0.5f + 0.5f * sin(_breathePhase);
+            uint16_t auroraHue = 135 + (uint16_t)(wave * 145.0f);
+
+            float brightnessWave = 0.7f + 0.3f * sin(_breathePhase * 2.1f);
+            uint8_t v = (uint8_t)(255 * brightnessWave);
+
+            uint8_t r, g, b;
+            hsvToRgb(auroraHue, 240, v, r, g, b);
+            writePixel(r, g, b);
+            break;
+        }
+
+        case RGB_POLICE: {
+            // High-visibility dual-burst emergency strobe (Red / Blue)
+            uint16_t cycle = now % 700;
+            if ((cycle >= 0 && cycle < 80) || (cycle >= 140 && cycle < 220)) {
+                writePixel(255, 0, 0); // Burst Red
+            } else if ((cycle >= 350 && cycle < 430) || (cycle >= 490 && cycle < 570)) {
+                writePixel(0, 50, 255); // Burst Blue
+            } else {
+                writePixel(0, 0, 0); // Strobe gap
+            }
+            break;
+        }
+
         default:
             writePixel(0, 0, 0);
             break;

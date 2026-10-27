@@ -403,21 +403,21 @@ body {
 /* Device Stats Grid */
 .device-stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 22px;
 }
 
 .info-card {
   background: rgba(0, 0, 0, 0.25);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 16px;
+  padding: 22px;
 }
 
 .info-card h4 {
   font-size: 0.95rem;
   color: var(--color-neon-cyan);
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -425,8 +425,8 @@ body {
 .info-row {
   display: flex;
   justify-content: space-between;
-  padding: 6px 0;
-  font-size: 0.85rem;
+  padding: 8px 0;
+  font-size: 0.88rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 

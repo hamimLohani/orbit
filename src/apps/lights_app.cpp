@@ -52,12 +52,16 @@ void LightsApp::onRender(RenderEngine& gfx) {
         const char* modeName = "LIGHT IS OFF";
         uint16_t modeColor = COLOR_TEXT_MUTED;
         switch (mode) {
-            case RGB_OFF:     modeName = "LIGHT IS OFF"; modeColor = COLOR_TEXT_MUTED; break;
-            case RGB_AMBIENT: modeName = "AMBIENT CLIMATE"; modeColor = COLOR_NEON_MINT; break;
-            case RGB_DISCO:   modeName = "DISCO (SOUND)"; modeColor = COLOR_NEON_AMBER; break;
-            case RGB_BREATHE: modeName = "PULSE BREATHE"; modeColor = COLOR_NEON_PURPLE; break;
-            case RGB_RAINBOW: modeName = "RAINBOW CYCLE"; modeColor = COLOR_NEON_CYAN; break;
-            case RGB_ALERT:   modeName = "CRITICAL ALERT"; modeColor = COLOR_NEON_RED; break;
+            case RGB_OFF:         modeName = "LIGHT IS OFF"; modeColor = COLOR_TEXT_MUTED; break;
+            case RGB_AMBIENT:     modeName = "AMBIENT CLIMATE"; modeColor = COLOR_NEON_MINT; break;
+            case RGB_DISCO:       modeName = "DISCO (SOUND)"; modeColor = COLOR_NEON_AMBER; break;
+            case RGB_BREATHE:     modeName = "PULSE BREATHE"; modeColor = COLOR_NEON_PURPLE; break;
+            case RGB_RAINBOW:     modeName = "RAINBOW CYCLE"; modeColor = COLOR_NEON_CYAN; break;
+            case RGB_ALERT:       modeName = "CRITICAL ALERT"; modeColor = COLOR_NEON_RED; break;
+            case RGB_DISCO_ALERT: modeName = "DISCO ALERT"; modeColor = COLOR_NEON_RED; break;
+            case RGB_CANDLE:      modeName = "WARM CANDLE"; modeColor = COLOR_NEON_AMBER; break;
+            case RGB_AURORA:      modeName = "AURORA LIGHTS"; modeColor = COLOR_NEON_MINT; break;
+            case RGB_POLICE:      modeName = "POLICE SIREN"; modeColor = COLOR_NEON_CYAN; break;
             default: break;
         }
         gfx.drawTextCentered(64, 61, modeName, modeColor, 1);

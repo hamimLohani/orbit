@@ -23,6 +23,7 @@
 #define PIN_TFT_DC            9
 #define PIN_TFT_RST           14
 #define PIN_TFT_BL            21   // Backlight PWM pin
+#define TFT_BACKLIGHT_MIN_DUTY 20  // Minimum PWM duty cycle at 0% brightness (screen stays visible & readable, never blacked out)
 
 // MicroSD Card (Dedicated CS)
 #define PIN_SD_CS             47

@@ -167,6 +167,16 @@ class OrbitWebController {
       this.isRecording = data.recording;
       this.updateRecordingUI(data.recording);
     }
+
+    if (data.rgb_mode !== undefined) {
+      document.querySelectorAll('.mode-btn').forEach(btn => {
+        if (parseInt(btn.dataset.mode) === data.rgb_mode) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    }
   }
 
   // Spectrum Canvas Rendering (25-30 FPS)
@@ -606,6 +616,66 @@ class OrbitWebController {
         const val = e.target.value;
         if (sliderVal) sliderVal.textContent = val + '%';
         this.send({ cmd: 'set_brightness', val: parseInt(val, 10) });
+      });
+    }
+
+    // Wi-Fi OTA Binary Uploader
+    const otaFileInput = document.getElementById('web-ota-file');
+    const btnStartOta = document.getElementById('btn-start-ota');
+    const otaDetails = document.getElementById('ota-file-details');
+    const otaProgContainer = document.getElementById('ota-progress-container');
+    const otaProgBar = document.getElementById('ota-progress-bar');
+    const otaStatus = document.getElementById('ota-upload-status');
+    const otaPct = document.getElementById('ota-upload-pct');
+    let otaFile = null;
+
+    if (otaFileInput && btnStartOta) {
+      otaFileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files.length) {
+          otaFile = e.target.files[0];
+          if (otaDetails) otaDetails.textContent = `${otaFile.name} (${(otaFile.size / 1024).toFixed(1)} KB)`;
+          btnStartOta.disabled = false;
+        }
+      });
+
+      btnStartOta.addEventListener('click', () => {
+        if (!otaFile) return;
+        btnStartOta.disabled = true;
+        if (otaProgContainer) otaProgContainer.style.display = 'block';
+
+        const formData = new FormData();
+        formData.append('file', otaFile, otaFile.name);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/update', true);
+
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 100);
+            if (otaProgBar) otaProgBar.style.width = pct + '%';
+            if (otaPct) otaPct.textContent = pct + '%';
+            if (otaStatus) otaStatus.textContent = `Uploading: ${(e.loaded / 1024).toFixed(0)} / ${(e.total / 1024).toFixed(0)} KB`;
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status === 200) {
+            if (otaProgBar) otaProgBar.style.width = '100%';
+            if (otaPct) otaPct.textContent = '100%';
+            if (otaStatus) otaStatus.textContent = 'Flashing Complete! Rebooting device...';
+            setTimeout(() => { window.location.reload(); }, 6000);
+          } else {
+            if (otaStatus) otaStatus.textContent = 'OTA Error: ' + xhr.responseText;
+            btnStartOta.disabled = false;
+          }
+        };
+
+        xhr.onerror = () => {
+          if (otaStatus) otaStatus.textContent = 'Network Error during upload!';
+          btnStartOta.disabled = false;
+        };
+
+        xhr.send(formData);
       });
     }
 

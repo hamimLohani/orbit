@@ -50,10 +50,9 @@ void RenderEngine::setBacklight(uint8_t brightnessPercent) {
     _currentBrightness = brightnessPercent;
     if (brightnessPercent >= 99) {
         digitalWrite(PIN_TFT_BL, HIGH);
-    } else if (brightnessPercent == 0) {
-        digitalWrite(PIN_TFT_BL, LOW);
     } else {
-        uint8_t duty = map(brightnessPercent, 0, 100, 0, 255);
+        // Map 0-100% to [TFT_BACKLIGHT_MIN_DUTY, 255] so 0% dims to minimum readable level and never turns off the screen
+        uint8_t duty = map(brightnessPercent, 0, 100, TFT_BACKLIGHT_MIN_DUTY, 255);
         analogWrite(PIN_TFT_BL, duty);
     }
 }

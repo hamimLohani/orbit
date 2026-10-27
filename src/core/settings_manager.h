@@ -40,6 +40,9 @@ public:
     uint16_t getPomodoroFocusMins();
     void setPomodoroFocusMins(uint16_t mins);
 
+    uint16_t getPomodoroBreakMins();
+    void setPomodoroBreakMins(uint16_t mins);
+
     // Generic Key-Value API for Future Apps
     int getAppInt(const char* appId, const char* key, int defaultVal = 0);
     void setAppInt(const char* appId, const char* key, int value);

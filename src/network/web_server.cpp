@@ -2,12 +2,15 @@
 #include "src/network/websocket_server.h"
 #include "src/network/wifi_manager.h"
 #include "src/network/wifi_setup_page.h"
+#include "src/network/ota_web_page.h"
+#include "src/network/ota_handler.h"
 #include "src/core/shared_data.h"
 #include "src/core/app_registry.h"
 #include "src/core/settings_manager.h"
 #include "src/display/bitmap_loader.h"
 #include "src/display/render_engine.h"
 #include <ArduinoJson.h>
+#include <Update.h>
 #include <esp_system.h>
 #include <esp_idf_version.h>
 
@@ -56,6 +59,59 @@ void WebServer::setupRoutes() {
     });
     _server.on("/redirect", HTTP_GET, [](AsyncWebServerRequest* request) {
         request->redirect("/wifi");
+    });
+
+    // 3. Web OTA Firmware & Filesystem Update Studio (GET /update)
+    _server.on("/update", HTTP_GET, [](AsyncWebServerRequest* request) {
+        request->send_P(200, "text/html", OTA_UPDATE_HTML);
+    });
+
+    // 4. Web OTA Binary Upload (POST /update)
+    _server.on("/update", HTTP_POST, [](AsyncWebServerRequest* request) {
+        bool shouldReboot = !Update.hasError();
+        AsyncWebServerResponse* response = request->beginResponse(200, "application/json",
+            shouldReboot ? "{\"status\":\"success\",\"message\":\"OTA Flash Complete! Rebooting...\"}"
+                         : "{\"status\":\"error\",\"message\":\"Flash error occurred.\"}");
+        response->addHeader("Connection", "close");
+        request->send(response);
+        if (shouldReboot) {
+            RenderEngine::getInstance().showToast("OTA SUCCESS", "Rebooting system...", COLOR_NEON_MINT, 3000);
+            delay(600);
+            esp_restart();
+        }
+    }, [](AsyncWebServerRequest* request, String filename, size_t index, uint8_t* data, size_t len, bool final) {
+        if (!index) {
+            Serial.printf("[WebOTA] Starting upload: %s\n", filename.c_str());
+            String target = request->hasParam("target") ? request->getParam("target")->value() : "flash";
+            int cmd = (target == "fs" || filename.indexOf("littlefs") >= 0 || filename.indexOf("spiffs") >= 0) ? U_SPIFFS : U_FLASH;
+            if (!Update.begin(UPDATE_SIZE_UNKNOWN, cmd)) {
+                Update.printError(Serial);
+                OtaHandler::getInstance().setUpdating(false, 0, "Init Error");
+            } else {
+                OtaHandler::getInstance().setUpdating(true, 0, "Flashing...");
+                RenderEngine::getInstance().showToast("WEB OTA", "Receiving binary...", COLOR_NEON_CYAN, 5000);
+            }
+        }
+        if (!Update.hasError()) {
+            if (Update.write(data, len) != len) {
+                Update.printError(Serial);
+                OtaHandler::getInstance().setUpdating(false, 0, "Write Error");
+            } else {
+                size_t current = index + len;
+                size_t total = request->contentLength();
+                uint8_t pct = (total > 0) ? (uint8_t)((current * 100) / total) : 50;
+                OtaHandler::getInstance().setUpdating(true, pct, "Flashing...");
+            }
+        }
+        if (final) {
+            if (Update.end(true)) {
+                Serial.printf("[WebOTA] Success: %u bytes\n", index + len);
+                OtaHandler::getInstance().setUpdating(false, 100, "Done! Rebooting");
+            } else {
+                Update.printError(Serial);
+                OtaHandler::getInstance().setUpdating(false, 0, "End Error");
+            }
+        }
     });
 
     // 3. Serve LittleFS Web Companion SPA if mounted
@@ -323,5 +379,73 @@ void WebServer::setupRestApi() {
         request->send(200, "application/json", "{\"status\":\"rebooting\"}");
         delay(200);
         esp_restart();
+    });
+
+    // 12. Wi-Fi File Upload to SD / LittleFS (POST /api/files/upload)
+    _server.on("/api/files/upload", HTTP_POST, [](AsyncWebServerRequest* request) {
+        request->send(200, "application/json", "{\"status\":\"success\",\"message\":\"File uploaded successfully\"}");
+    }, [](AsyncWebServerRequest* request, String filename, size_t index, uint8_t* data, size_t len, bool final) {
+        static File uploadFile;
+        static bool isSd = true;
+        if (!index) {
+            String target = request->hasParam("target") ? request->getParam("target")->value() : "sd";
+            String path = request->hasParam("path") ? request->getParam("path")->value() : "";
+            isSd = (target != "lfs");
+
+            if (isSd) {
+                SemaphoreHandle_t mutex = RenderEngine::getSpiMutex();
+                if (xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+                    digitalWrite(PIN_TFT_CS, HIGH);
+                    String fullPath = path.isEmpty() ? ("/" + filename) : (path + "/" + filename);
+                    uploadFile = SD.open(fullPath.c_str(), FILE_WRITE);
+                    xSemaphoreGive(mutex);
+                }
+            } else {
+                String fullPath = path.isEmpty() ? ("/" + filename) : (path + "/" + filename);
+                uploadFile = LittleFS.open(fullPath.c_str(), "w");
+            }
+            Serial.printf("[Upload] Starting Wi-Fi file upload: %s (target: %s)\n", filename.c_str(), target.c_str());
+        }
+        if (uploadFile) {
+            if (isSd) {
+                SemaphoreHandle_t mutex = RenderEngine::getSpiMutex();
+                if (xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+                    digitalWrite(PIN_TFT_CS, HIGH);
+                    uploadFile.write(data, len);
+                    xSemaphoreGive(mutex);
+                }
+            } else {
+                uploadFile.write(data, len);
+            }
+        }
+        if (final) {
+            if (uploadFile) {
+                if (isSd) {
+                    SemaphoreHandle_t mutex = RenderEngine::getSpiMutex();
+                    if (xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+                        digitalWrite(PIN_TFT_CS, HIGH);
+                        uploadFile.close();
+                        xSemaphoreGive(mutex);
+                    }
+                } else {
+                    uploadFile.close();
+                }
+            }
+            Serial.printf("[Upload] Wi-Fi file upload complete: %s (%u bytes)\n", filename.c_str(), index + len);
+            char toastMsg[32];
+            snprintf(toastMsg, sizeof(toastMsg), "Saved %s", filename.c_str());
+            RenderEngine::getInstance().showToast("FILE UPLOAD", toastMsg, COLOR_NEON_MINT, 2500);
+        }
+    });
+
+    // 13. OTA Status API (GET /api/ota/status)
+    _server.on("/api/ota/status", HTTP_GET, [](AsyncWebServerRequest* request) {
+        JsonDocument doc;
+        doc["updating"] = OtaHandler::getInstance().isUpdating();
+        doc["progress"] = OtaHandler::getInstance().getProgressPercent();
+        doc["status"] = OtaHandler::getInstance().getStatusText();
+        String res;
+        serializeJson(doc, res);
+        request->send(200, "application/json", res);
     });
 }

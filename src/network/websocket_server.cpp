@@ -79,6 +79,12 @@ void WebSocketServer::handleMessage(AsyncWebSocketClient* client, void* arg, uin
         } else if (strcmp(cmd, "sync_time") == 0) {
             int tzOffset = doc["tz_offset"] | 360;
             NtpSync::getInstance().setTimezoneOffset((int16_t)tzOffset);
+        } else if (strcmp(cmd, "set_focus_timer") == 0) {
+            uint16_t focusMins = doc["focus_mins"] | 25;
+            uint16_t breakMins = doc["break_mins"] | 5;
+            SettingsManager::getInstance().setPomodoroFocusMins(focusMins);
+            SettingsManager::getInstance().setPomodoroBreakMins(breakMins);
+            RenderEngine::getInstance().showToast("TIMER UPDATED", "Focus Timer Configured", COLOR_NEON_MINT, 1200);
         }
     }
 }

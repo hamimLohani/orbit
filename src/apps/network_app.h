@@ -21,4 +21,12 @@ public:
     void onUpdate(uint32_t deltaMs) override;
     void onRender(RenderEngine& gfx) override;
     bool onButtonEvent(const ButtonEvent& evt) override;
+
+private:
+    void renderPage0(RenderEngine& gfx); // Wi-Fi & NTP Time
+    void renderPage1(RenderEngine& gfx); // OTA Flasher & File Uploads
+    void renderOtaProgress(RenderEngine& gfx);
+
+    uint8_t _currentPage = 0;
+    const uint8_t _maxPages = 2;
 };

@@ -235,8 +235,13 @@
             <div class="mode-buttons-grid">
               <button class="mode-btn active" data-mode="1">Ambient (Climate)</button>
               <button class="mode-btn" data-mode="2">Disco (Sound-Reactive)</button>
+              <button class="mode-btn" data-mode="7">Disco Alert (Beat Strobe)</button>
               <button class="mode-btn" data-mode="3">Sinusoidal Breathe</button>
               <button class="mode-btn" data-mode="4">Rainbow Cycle</button>
+              <button class="mode-btn" data-mode="8">Warm Candle</button>
+              <button class="mode-btn" data-mode="9">Aurora Borealis</button>
+              <button class="mode-btn" data-mode="10">Police Siren</button>
+              <button class="mode-btn" data-mode="6">Critical Alert</button>
               <button class="mode-btn" data-mode="5">Solid Custom</button>
               <button class="mode-btn" data-mode="0">Turn Off</button>
             </div>
@@ -445,7 +450,7 @@
         </div>
 
         <!-- Backlight & Quick Control Box -->
-        <div class="control-box" style="margin-bottom:20px;">
+        <div class="control-box" style="margin-bottom:24px; padding:22px;">
           <h4>Display Backlight PWM</h4>
           <div style="display:flex; align-items:center; gap:16px; margin-top:10px;">
             <input type="range" id="settings-brightness-slider" min="0" max="100" value="80" style="flex:1; accent-color:var(--cyan); height:6px;">
@@ -453,8 +458,42 @@
           </div>
         </div>
 
+        <!-- Wi-Fi OTA Firmware & File Upload Studio -->
+        <div class="control-box" style="margin-bottom:24px; padding:22px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
+            <h4>Wi-Fi OTA Firmware & File Flasher</h4>
+            <a href="/update" target="_blank" style="color:var(--cyan); font-size:0.85rem; text-decoration:none; display:flex; align-items:center; gap:4px; font-weight:600;">
+              <span>Open Dedicated Web Studio</span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
+            </a>
+          </div>
+          <p style="font-size:0.85rem; color:var(--muted); margin-bottom:14px; line-height:1.4;">
+            Upload compiled binary firmware (<code style="color:var(--mint);">.bin</code>) or LittleFS filesystem images directly over Wi-Fi without USB cables.
+          </p>
+          <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+            <input type="file" id="web-ota-file" accept=".bin" style="display:none;">
+            <button class="btn btn-secondary" id="btn-select-ota" type="button" onclick="document.getElementById('web-ota-file').click()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+              <span id="label-ota-select">Choose Binary (.bin)</span>
+            </button>
+            <button class="btn btn-primary" id="btn-start-ota" type="button" disabled>
+              <span>Flash Over Wi-Fi</span>
+            </button>
+            <span id="ota-file-details" style="font-size:0.85rem; color:var(--muted); font-family:monospace;"></span>
+          </div>
+          <div id="ota-progress-container" style="display:none; margin-top:14px;">
+            <div style="background:rgba(255,255,255,0.08); height:8px; border-radius:4px; overflow:hidden; margin-bottom:6px;">
+              <div id="ota-progress-bar" style="background:linear-gradient(90deg, var(--cyan), var(--mint)); height:100%; width:0%; transition:width 0.15s ease;"></div>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:var(--muted); font-family:monospace;">
+              <span id="ota-upload-status">Uploading...</span>
+              <span id="ota-upload-pct">0%</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Grid of Hardware Diagnostics Cards -->
-        <div class="device-stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+        <div class="device-stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 22px;">
           <!-- 1. Silicon & Device ID -->
           <div class="info-card">
             <h4>Processor & Silicon ID</h4>
