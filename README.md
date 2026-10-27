@@ -97,3 +97,11 @@ See [`docs/ADDING_NEW_APPS.md`](docs/ADDING_NEW_APPS.md) for full instructions:
 2. Implement your UI rendering in `onRender(RenderEngine& gfx)`.
 3. Add `REGISTER_APP(MyNewApp);` at the top of your `.cpp` file.
 4. Compile — your new app will automatically appear in the carousel and on the web dashboard!
+
+---
+
+## 🧠 Operating System & FreeRTOS Architecture
+
+ORBIT runs on FreeRTOS with true dual-core Xtensa multiprocessing, 6 discrete preemptive tasks, lock-free button event queues, and deadlock-free mutex arbitration.
+
+See [`docs/OS_CONCEPTS.md`](docs/OS_CONCEPTS.md) for the complete theoretical mapping, Coffman deadlock verification, task topologies, and scheduling matrices.

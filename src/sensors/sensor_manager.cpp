@@ -9,7 +9,7 @@ void SensorManager::init() {
     MicSensor::getInstance().init();
 }
 
-void SensorManager::updateSensors() {
+void SensorManager::updateClimate() {
     // 1. Update DHT11
     if (Dht11Sensor::getInstance().update()) {
         float temp = Dht11Sensor::getInstance().getTemperature();
@@ -17,8 +17,10 @@ void SensorManager::updateSensors() {
         SharedData::getInstance().setClimate(temp, hum);
         EventBus::getInstance().publish(EVENT_SENSOR_UPDATE, nullptr);
     }
+}
 
-    // 2. Mic sensor is polled in Core 0 or during loop
+void SensorManager::updateAudio() {
+    // 2. Mic sensor high-frequency I2S DMA & FFT processing
     MicSensor::getInstance().update();
 
     uint32_t now = millis();
@@ -31,4 +33,9 @@ void SensorManager::updateSensors() {
             MicSensor::getInstance().getFftBands()
         );
     }
+}
+
+void SensorManager::updateSensors() {
+    updateClimate();
+    updateAudio();
 }

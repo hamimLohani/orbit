@@ -109,13 +109,14 @@ The ST7735 TFT and MicroSD card share the high-speed SPI bus (MOSI:11, MISO:13, 
                                          +-------------------+
 ```
 
-### 3.1 Design Principles
-1. **Zero Blocking Delays**: No `delay()` anywhere in the main loop or apps. All timings are governed by FreeRTOS tasks and `millis()` delta timers.
-2. **Dual-Core FreeRTOS Allocation**:
-   - **Core 0**: High-bandwidth I2S audio continuous sampling, FFT processing, WiFi stack, and WebSocket networking.
-   - **Core 1**: UI rendering (ST7735), button event dispatch, state machine, sensor management, and app lifecycle.
+### 3.1 Design Principles & FreeRTOS Microkernel Architecture
+1. **Zero Blocking Delays**: No `delay()` anywhere in the main execution paths. All timings are governed by FreeRTOS tasks, `vTaskDelayUntil()`, and non-blocking timers.
+2. **6 Discrete FreeRTOS Tasks with Dual-Core Affinity**:
+   - **Core 0**: `AudioTask` (Pri 4, 16kHz I2S DMA & FFT), `NetworkTask` (Pri 1, WiFi/WebSockets/NTP/OTA).
+   - **Core 1**: `InputTask` (Pri 4, Debounced Button Queue), `DisplayTask` (Pri 3, 30 FPS double-buffered UI), `LightingTask` (Pri 2, WS2812/LED animations), `SensorTask` (Pri 2, DHT11 climate).
 3. **Decoupled Event Bus (`EventBus`)**: System modules publish asynchronous events (`EVENT_SOUND_SPIKE`, `EVENT_SENSOR_UPDATE`, `EVENT_NOTIFICATION`, `EVENT_WEATHER_SYNC`), allowing any app to subscribe without tight coupling.
-4. **Shared Telemetry Bus (`SharedData`)**: Thread-safe telemetry structure updated non-blockingly, accessible to all running apps simultaneously.
+4. **Shared Telemetry Bus (`SharedData`)**: Thread-safe telemetry structure guarded by FreeRTOS mutex with bounded timeouts.
+5. **Detailed Operating System Concept Analysis**: See [`docs/OS_CONCEPTS.md`](docs/OS_CONCEPTS.md) for the complete OS theoretical mapping, Coffman deadlock verification, and task scheduling matrix.
 
 ---
 

@@ -13,7 +13,9 @@ public:
     }
 
     void init();
-    void updateSensors(); // Called regularly from OS loop
+    void updateSensors(); // Updates both audio and climate (backward compatibility)
+    void updateClimate(); // Called from SensorTask (DHT11)
+    void updateAudio();   // Called from AudioTask (I2S Mic & FFT)
 
 private:
     SensorManager() = default;

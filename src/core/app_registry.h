@@ -36,7 +36,7 @@ public:
     void toggleCarousel();
 
 private:
-    AppRegistry() = default;
+    AppRegistry();
     ~AppRegistry();
 
     void renderCarousel(RenderEngine& gfx);
@@ -45,6 +45,7 @@ private:
     size_t _activeIndex = 0;
     size_t _carouselIndex = 0;
     bool _inCarousel = false;
+    SemaphoreHandle_t _registryMutex = nullptr;
 };
 
 // Automatic App Registration Macro

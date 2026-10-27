@@ -4,11 +4,19 @@
 #include "src/sensors/mic_sensor.h"
 #include "src/display/theme.h"
 
+AppRegistry::AppRegistry() {
+    _registryMutex = xSemaphoreCreateRecursiveMutex();
+}
+
 AppRegistry::~AppRegistry() {
     for (auto* app : _apps) {
         delete app;
     }
     _apps.clear();
+    if (_registryMutex) {
+        vSemaphoreDelete(_registryMutex);
+        _registryMutex = nullptr;
+    }
 }
 
 void AppRegistry::registerApp(AppBase* app) {
@@ -51,42 +59,49 @@ void AppRegistry::initAll() {
 }
 
 void AppRegistry::update(uint32_t deltaMs) {
-    for (size_t i = 0; i < _apps.size(); ++i) {
-        if (i == _activeIndex || _apps[i]->getMetadata().backgroundRunning) {
-            _apps[i]->onUpdate(deltaMs);
+    if (_registryMutex && xSemaphoreTakeRecursive(_registryMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+        for (size_t i = 0; i < _apps.size(); ++i) {
+            if (i == _activeIndex || _apps[i]->getMetadata().backgroundRunning) {
+                _apps[i]->onUpdate(deltaMs);
+            }
         }
+        xSemaphoreGiveRecursive(_registryMutex);
     }
 }
 
 void AppRegistry::render(RenderEngine& gfx) {
-    TelemetryData telem = SharedData::getInstance().getData();
+    if (_registryMutex && xSemaphoreTakeRecursive(_registryMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+        TelemetryData telem = SharedData::getInstance().getData();
 
-    // 1. Draw top status bar
-    uint8_t currentIcon = (_activeIndex < _apps.size()) ? _apps[_activeIndex]->getMetadata().iconIndex : 0;
-    gfx.drawStatusBar(telem.timeStr, telem.wifiConnected, telem.wifiRssi, currentIcon);
+        // 1. Draw top status bar
+        uint8_t currentIcon = (_activeIndex < _apps.size()) ? _apps[_activeIndex]->getMetadata().iconIndex : 0;
+        gfx.drawStatusBar(telem.timeStr, telem.wifiConnected, telem.wifiRssi, currentIcon);
 
-    // 2. Render either Carousel or Active App
-    if (_inCarousel) {
-        renderCarousel(gfx);
-    } else {
-        if (_activeIndex < _apps.size()) {
-            _apps[_activeIndex]->onRender(gfx);
+        // 2. Render either Carousel or Active App
+        if (_inCarousel) {
+            renderCarousel(gfx);
+        } else {
+            if (_activeIndex < _apps.size()) {
+                _apps[_activeIndex]->onRender(gfx);
+            }
         }
-    }
 
-    // 3. Render Voice Recording Banner HUD if active
-    if (MicSensor::getInstance().isRecording()) {
-        uint32_t durSec = MicSensor::getInstance().getRecordingDurationMs() / 1000;
-        gfx.fillRect(20, SCREEN_HEIGHT - 20, SCREEN_WIDTH - 40, 16, COLOR_SLATE_DARK);
-        gfx.drawRect(20, SCREEN_HEIGHT - 20, SCREEN_WIDTH - 40, 16, COLOR_NEON_RED);
-        gfx.fillCircle(28, SCREEN_HEIGHT - 12, 3, COLOR_NEON_RED);
-        char recBuf[16];
-        snprintf(recBuf, sizeof(recBuf), "REC %02lu:%02lu", durSec / 60, durSec % 60);
-        gfx.drawText(36, SCREEN_HEIGHT - 16, recBuf, COLOR_TEXT_LIGHT, 1);
-    }
+        // 3. Render Voice Recording Banner HUD if active
+        if (MicSensor::getInstance().isRecording()) {
+            uint32_t durSec = MicSensor::getInstance().getRecordingDurationMs() / 1000;
+            gfx.fillRect(20, SCREEN_HEIGHT - 20, SCREEN_WIDTH - 40, 16, COLOR_SLATE_DARK);
+            gfx.drawRect(20, SCREEN_HEIGHT - 20, SCREEN_WIDTH - 40, 16, COLOR_NEON_RED);
+            gfx.fillCircle(28, SCREEN_HEIGHT - 12, 3, COLOR_NEON_RED);
+            char recBuf[16];
+            snprintf(recBuf, sizeof(recBuf), "REC %02lu:%02lu", durSec / 60, durSec % 60);
+            gfx.drawText(36, SCREEN_HEIGHT - 16, recBuf, COLOR_TEXT_LIGHT, 1);
+        }
 
-    // 4. Render Toast notification overlay
-    gfx.renderToastOverlay();
+        // 4. Render Toast notification overlay
+        gfx.renderToastOverlay();
+
+        xSemaphoreGiveRecursive(_registryMutex);
+    }
 }
 
 void AppRegistry::renderCarousel(RenderEngine& gfx) {
@@ -121,59 +136,67 @@ void AppRegistry::renderCarousel(RenderEngine& gfx) {
 }
 
 void AppRegistry::handleButtonEvent(const ButtonEvent& evt) {
-    // 1. Threshold: 2.0s Hold on ENTER -> Direct return to HOME
-    if (evt.button == BTN_ID_ENTER && evt.type == BUTTON_HOLD_2S) {
-        returnHome();
-        _inCarousel = false;
-        RenderEngine::getInstance().showToast("HOME", "Returned to Home", COLOR_NEON_CYAN, 1200);
-        return;
-    }
-
-    // 2. Threshold: 0.5s Hold on ENTER -> Go BACK
-    if (evt.button == BTN_ID_ENTER && evt.type == BUTTON_HOLD_05S) {
-        if (_inCarousel) {
-            _inCarousel = false;
-        } else if (_activeIndex != 0) {
+    if (_registryMutex && xSemaphoreTakeRecursive(_registryMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+        // 1. Threshold: 2.0s Hold on ENTER -> Direct return to HOME
+        if (evt.button == BTN_ID_ENTER && evt.type == BUTTON_HOLD_2S) {
             returnHome();
-        } else {
-            toggleCarousel();
+            _inCarousel = false;
+            RenderEngine::getInstance().showToast("HOME", "Returned to Home", COLOR_NEON_CYAN, 1200);
+            xSemaphoreGiveRecursive(_registryMutex);
+            return;
         }
-        RenderEngine::getInstance().showToast("BACK", "Previous Screen", COLOR_TEXT_MUTED, 1000);
-        return;
-    }
 
-    // 3. Carousel Mode Navigation
-    if (_inCarousel) {
-        if (evt.type == BUTTON_CLICK || evt.type == BUTTON_REPEAT) {
-            if (evt.button == BTN_ID_UP || evt.button == BTN_ID_LEFT) {
-                if (_carouselIndex > 0) _carouselIndex--;
-                else _carouselIndex = _apps.size() - 1;
-            } else if (evt.button == BTN_ID_DOWN || evt.button == BTN_ID_RIGHT) {
-                _carouselIndex = (_carouselIndex + 1) % _apps.size();
-            } else if (evt.button == BTN_ID_ENTER) {
-                switchApp(_carouselIndex);
+        // 2. Threshold: 0.5s Hold on ENTER -> Go BACK
+        if (evt.button == BTN_ID_ENTER && evt.type == BUTTON_HOLD_05S) {
+            if (_inCarousel) {
                 _inCarousel = false;
+            } else if (_activeIndex != 0) {
+                returnHome();
+            } else {
+                toggleCarousel();
+            }
+            RenderEngine::getInstance().showToast("BACK", "Previous Screen", COLOR_TEXT_MUTED, 1000);
+            xSemaphoreGiveRecursive(_registryMutex);
+            return;
+        }
+
+        // 3. Carousel Mode Navigation
+        if (_inCarousel) {
+            if (evt.type == BUTTON_CLICK || evt.type == BUTTON_REPEAT) {
+                if (evt.button == BTN_ID_UP || evt.button == BTN_ID_LEFT) {
+                    if (_carouselIndex > 0) _carouselIndex--;
+                    else _carouselIndex = _apps.size() - 1;
+                } else if (evt.button == BTN_ID_DOWN || evt.button == BTN_ID_RIGHT) {
+                    _carouselIndex = (_carouselIndex + 1) % _apps.size();
+                } else if (evt.button == BTN_ID_ENTER) {
+                    switchApp(_carouselIndex);
+                    _inCarousel = false;
+                }
+            }
+            xSemaphoreGiveRecursive(_registryMutex);
+            return;
+        }
+
+        // 4. Active App Input Delegation
+        if (_activeIndex < _apps.size()) {
+            if (_apps[_activeIndex]->onButtonEvent(evt)) {
+                xSemaphoreGiveRecursive(_registryMutex);
+                return; // App consumed the event
             }
         }
-        return;
-    }
 
-    // 4. Active App Input Delegation
-    if (_activeIndex < _apps.size()) {
-        if (_apps[_activeIndex]->onButtonEvent(evt)) {
-            return; // App consumed the event
+        // 5. Default Navigation on Home Dashboard
+        if (evt.type == BUTTON_CLICK) {
+            if (evt.button == BTN_ID_ENTER) {
+                toggleCarousel(); // Short tap on Enter opens app launcher
+            } else if (evt.button == BTN_ID_LEFT || evt.button == BTN_ID_UP) {
+                prevApp();
+            } else if (evt.button == BTN_ID_RIGHT || evt.button == BTN_ID_DOWN) {
+                nextApp();
+            }
         }
-    }
 
-    // 5. Default Navigation on Home Dashboard
-    if (evt.type == BUTTON_CLICK) {
-        if (evt.button == BTN_ID_ENTER) {
-            toggleCarousel(); // Short tap on Enter opens app launcher
-        } else if (evt.button == BTN_ID_LEFT || evt.button == BTN_ID_UP) {
-            prevApp();
-        } else if (evt.button == BTN_ID_RIGHT || evt.button == BTN_ID_DOWN) {
-            nextApp();
-        }
+        xSemaphoreGiveRecursive(_registryMutex);
     }
 }
 
@@ -183,19 +206,25 @@ void AppRegistry::toggleCarousel() {
 }
 
 bool AppRegistry::switchApp(size_t index) {
-    if (index >= _apps.size() || index == _activeIndex) {
-        return false;
-    }
+    if (_registryMutex && xSemaphoreTakeRecursive(_registryMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+        if (index >= _apps.size() || index == _activeIndex) {
+            xSemaphoreGiveRecursive(_registryMutex);
+            return false;
+        }
 
-    if (_activeIndex < _apps.size()) {
-        _apps[_activeIndex]->onExit();
-    }
+        if (_activeIndex < _apps.size()) {
+            _apps[_activeIndex]->onExit();
+        }
 
-    _activeIndex = index;
-    _apps[_activeIndex]->onEnter();
-    SharedData::getInstance().setSystemStatus(ESP.getFreeHeap(), millis() / 1000, _apps[_activeIndex]->getMetadata().id);
-    EventBus::getInstance().publish(EVENT_APP_SWITCHED, _apps[_activeIndex]->getMetadata().id);
-    return true;
+        _activeIndex = index;
+        _apps[_activeIndex]->onEnter();
+        SharedData::getInstance().setSystemStatus(ESP.getFreeHeap(), millis() / 1000, _apps[_activeIndex]->getMetadata().id);
+        xSemaphoreGiveRecursive(_registryMutex);
+
+        EventBus::getInstance().publish(EVENT_APP_SWITCHED, _apps[_activeIndex]->getMetadata().id);
+        return true;
+    }
+    return false;
 }
 
 bool AppRegistry::switchAppById(const char* id) {
