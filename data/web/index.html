@@ -68,6 +68,14 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
         <span>Push Toast</span>
       </button>
+      <button class="nav-tab" data-tab="network">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
+        <span>Wi-Fi Setup</span>
+      </button>
+      <button class="nav-tab" data-tab="settings">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        <span>Settings & Info</span>
+      </button>
     </nav>
 
     <!-- TAB 1: TELEMETRY HUD -->
@@ -103,11 +111,11 @@
 
         <div class="metric-card card-amber">
           <div class="metric-header">
-            <span class="metric-title">Active Screen</span>
-            <span class="metric-icon">📱</span>
+            <span class="metric-title">NTP Clock & Date</span>
+            <span class="metric-icon">⏱️</span>
           </div>
-          <div class="metric-value" id="val-active-app" style="text-transform: capitalize;">Home</div>
-          <div class="metric-sub" id="val-time">Time: --:--:--</div>
+          <div class="metric-value" id="val-time" style="font-size:1.5rem; letter-spacing:0.5px;">--:--:--</div>
+          <div class="metric-sub" id="val-date" style="color:var(--cyan); font-weight:600;">Synchronizing...</div>
         </div>
       </section>
 
@@ -211,6 +219,11 @@
             <div class="app-card-icon">🚀</div>
             <div class="app-card-title">Lander</div>
             <div class="app-card-desc">Lunar lander physics arcade</div>
+          </div>
+          <div class="app-card" data-app="snake">
+            <div class="app-card-icon">🐍</div>
+            <div class="app-card-title">Snake</div>
+            <div class="app-card-desc">Arcade serpent with power-ups</div>
           </div>
           <div class="app-card" data-app="network">
             <div class="app-card-icon">📶</div>
@@ -373,6 +386,158 @@
           </div>
           <button type="submit" class="btn btn-primary" style="margin-top:12px">Transmit Toast Notification</button>
         </form>
+      </div>
+    </section>
+
+    <!-- TAB 7: WI-FI & NETWORK PROVISIONING -->
+    <section class="tab-content" id="tab-network">
+      <div class="panel-section">
+        <div class="panel-header">
+          <div>
+            <h3>Wireless Network Provisioning</h3>
+            <p class="section-desc">Scan nearby Wi-Fi networks and reconfigure ORBIT's connection from your browser.</p>
+          </div>
+          <button class="btn btn-secondary" id="btn-dash-scan" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>
+            <span>Scan Wi-Fi</span>
+          </button>
+        </div>
+
+        <!-- Network Info Pill -->
+        <div class="card" style="padding:16px; margin-bottom:18px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; background:rgba(18,24,38,0.7); border:1px solid var(--border); border-radius:10px;">
+          <div>
+            <div style="font-size:0.75rem; color:var(--muted); text-transform:uppercase;">Connected SSID</div>
+            <div id="net-curr-ssid" style="font-size:1.05rem; font-weight:700; color:var(--cyan);">--</div>
+          </div>
+          <div>
+            <div style="font-size:0.75rem; color:var(--muted); text-transform:uppercase;">Device IP</div>
+            <div id="net-curr-ip" style="font-size:1.05rem; font-weight:700; color:var(--mint);">--</div>
+          </div>
+          <div>
+            <div style="font-size:0.75rem; color:var(--muted); text-transform:uppercase;">Signal (RSSI)</div>
+            <div id="net-curr-rssi" style="font-size:1.05rem; font-weight:700; color:#fff;">-- dBm</div>
+          </div>
+          <a href="/wifi" target="_blank" class="btn btn-secondary" style="text-decoration:none; font-size:0.8rem; padding:6px 12px;">Standalone Portal &nearr;</a>
+        </div>
+
+        <!-- Scanned Networks Container -->
+        <div id="dash-wifi-list" class="network-list" style="max-height:220px; overflow-y:auto; border:1px solid var(--border); border-radius:10px; background:rgba(9,14,23,0.85); margin-bottom:18px;">
+          <div style="color:var(--muted); font-size:0.85rem; padding:20px; text-align:center;">Click "Scan Wi-Fi" to discover nearby 2.4 GHz networks.</div>
+        </div>
+
+        <!-- Credentials Form -->
+        <form id="dash-wifi-form" class="toast-form">
+          <div class="form-group">
+            <label for="dash-wifi-ssid">Target Network (SSID)</label>
+            <input type="text" id="dash-wifi-ssid" class="styled-input" placeholder="Select above or type SSID" required autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label for="dash-wifi-pass">Password</label>
+            <input type="password" id="dash-wifi-pass" class="styled-input" placeholder="Wi-Fi Password (leave blank for open networks)">
+          </div>
+          <button type="submit" class="btn btn-primary" id="btn-dash-connect" style="margin-top:10px; width:100%;">Connect ORBIT to Network</button>
+        </form>
+
+        <div id="dash-wifi-status" style="display:none; margin-top:16px; padding:16px; border-radius:10px; border:1px solid var(--border); background:rgba(9,14,23,0.95);">
+          <div id="dash-status-text" style="font-weight:700; font-size:0.95rem; color:var(--cyan);">Connecting...</div>
+          <div id="dash-status-sub" style="font-size:0.85rem; color:var(--muted); margin-top:6px; line-height:1.4;">Please wait while ORBIT negotiates connection with your network.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 8: DEVICE SETTINGS & HARDWARE DIAGNOSTICS -->
+    <section class="tab-content" id="tab-settings">
+      <div class="panel-section">
+        <div class="panel-header">
+          <div>
+            <h3>Device Settings & Hardware Diagnostics</h3>
+            <p class="section-desc">Comprehensive telemetry covering silicon ID, memory architecture, flash ROM, storage, and networking.</p>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn btn-secondary" id="btn-refresh-diagnostics" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>
+              <span>Refresh</span>
+            </button>
+            <button class="btn btn-secondary" id="btn-reboot-device" type="button" style="border-color:rgba(255,77,109,0.4); color:var(--red);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
+              <span>Reboot</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Backlight & Quick Control Box -->
+        <div class="control-box" style="margin-bottom:20px;">
+          <h4>Display Backlight PWM</h4>
+          <div style="display:flex; align-items:center; gap:16px; margin-top:10px;">
+            <input type="range" id="settings-brightness-slider" min="0" max="100" value="80" style="flex:1; accent-color:var(--cyan); height:6px;">
+            <span id="settings-brightness-val" style="font-size:1.1rem; font-weight:700; color:var(--cyan); min-width:48px; text-align:right;">80%</span>
+          </div>
+        </div>
+
+        <!-- Grid of Hardware Diagnostics Cards -->
+        <div class="device-stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+          <!-- 1. Silicon & Device ID -->
+          <div class="info-card">
+            <h4>Processor & Silicon ID</h4>
+            <div class="info-row"><span>MCU Model:</span><strong id="diag-chip" style="color:var(--cyan);">ESP32-S3</strong></div>
+            <div class="info-row"><span>Cores & Clock:</span><strong id="diag-cores">2 Cores @ 240 MHz</strong></div>
+            <div class="info-row"><span>Silicon Rev:</span><strong id="diag-rev">v0.2 (LX7)</strong></div>
+            <div class="info-row"><span>Hardware UID:</span><strong id="diag-uid" style="font-family:monospace; color:var(--mint);">--</strong></div>
+            <div class="info-row"><span>Factory MAC:</span><strong id="diag-mac" style="font-family:monospace;">--</strong></div>
+          </div>
+
+          <!-- 2. Operating System & Firmware -->
+          <div class="info-card">
+            <h4>Operating System & Platform</h4>
+            <div class="info-row"><span>OS Platform:</span><strong id="diag-os" style="color:var(--mint);">ORBIT OS v2.0.0</strong></div>
+            <div class="info-row"><span>Kernel:</span><strong id="diag-kernel">FreeRTOS 10</strong></div>
+            <div class="info-row"><span>ESP-IDF Version:</span><strong id="diag-idf">--</strong></div>
+            <div class="info-row"><span>Uptime:</span><strong id="diag-uptime">--</strong></div>
+            <div class="info-row"><span>Display:</span><strong>ST7735 TFT 128x160</strong></div>
+          </div>
+
+          <!-- 3. Storage Subsystems -->
+          <div class="info-card">
+            <h4>Storage Subsystems</h4>
+            <div class="info-row"><span>MicroSD Card:</span><strong id="diag-sd-status" style="color:var(--amber);">Checking...</strong></div>
+            <div class="info-row"><span>SD Capacity:</span><strong id="diag-sd-cap">--</strong></div>
+            <div class="info-row"><span>SD Used / Free:</span><strong id="diag-sd-used">--</strong></div>
+            <div class="info-row"><span>LittleFS Storage:</span><strong id="diag-lfs-used">--</strong></div>
+            <div class="info-row"><span>SD Interface:</span><strong>SPI (CS GPIO 47)</strong></div>
+          </div>
+
+          <!-- 4. Flash ROM & Sketch Partition -->
+          <div class="info-card">
+            <h4>Flash ROM & Firmware Partition</h4>
+            <div class="info-row"><span>SPI Flash Size:</span><strong id="diag-flash-size" style="color:var(--cyan);">8 MB</strong></div>
+            <div class="info-row"><span>Bus Clock:</span><strong id="diag-flash-speed">80 MHz (Octal SPI)</strong></div>
+            <div class="info-row"><span>Sketch App Size:</span><strong id="diag-sketch-size">-- KB</strong></div>
+            <div class="info-row"><span>Free App Space:</span><strong id="diag-free-sketch">-- KB</strong></div>
+            <div class="info-row"><span>Flash Partition:</span><strong>default_8MB.csv</strong></div>
+          </div>
+
+          <!-- 5. Memory Architecture -->
+          <div class="info-card">
+            <h4>Memory Architecture (RAM)</h4>
+            <div class="info-row"><span>SRAM Heap Free:</span><strong id="diag-heap-free" style="color:var(--cyan);">-- KB</strong></div>
+            <div class="info-row"><span>SRAM Min Free:</span><strong id="diag-heap-min">-- KB</strong></div>
+            <div class="info-row"><span>SRAM Total Size:</span><strong id="diag-heap-total">320 KB</strong></div>
+            <div class="info-row"><span>External PSRAM:</span><strong id="diag-psram-status" style="color:var(--mint);">--</strong></div>
+            <div class="info-row"><span>PSRAM Free:</span><strong id="diag-psram-free">--</strong></div>
+          </div>
+
+          <!-- 6. Network & TCP/IP -->
+          <div class="info-card">
+            <h4>Network & Connectivity</h4>
+            <div class="info-row"><span>Wi-Fi Status:</span><strong id="diag-net-status" style="color:var(--mint);">--</strong></div>
+            <div class="info-row"><span>Connected SSID:</span><strong id="diag-net-ssid">--</strong></div>
+            <div class="info-row"><span>IP Address:</span><strong id="diag-net-ip" style="color:var(--cyan);">--</strong></div>
+            <div class="info-row"><span>Gateway:</span><strong id="diag-net-gw">--</strong></div>
+            <div class="info-row"><span>Subnet Mask:</span><strong id="diag-net-mask">--</strong></div>
+            <div class="info-row"><span>Signal RSSI:</span><strong id="diag-net-rssi">-- dBm</strong></div>
+            <div class="info-row"><span>mDNS Hostname:</span><strong style="color:var(--purple);">orbit.local</strong></div>
+          </div>
+        </div>
       </div>
     </section>
 

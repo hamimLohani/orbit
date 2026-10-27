@@ -25,6 +25,8 @@ class OrbitWebController {
     this.setupWallpaperStudio();
     this.setupToastForm();
     this.setupPingButton();
+    this.setupNetworkTab();
+    this.setupSettingsTab();
   }
 
   // Tab Switching
@@ -55,6 +57,13 @@ class OrbitWebController {
         this.connected = true;
         this.updateConnectionStatus(true);
         if (this.reconnectTimer) clearInterval(this.reconnectTimer);
+
+        // Auto-synchronize browser local timezone offset to ORBIT
+        const tzOffsetMins = -new Date().getTimezoneOffset();
+        this.send({
+          cmd: 'sync_time',
+          tz_offset: tzOffsetMins
+        });
       };
 
       this.ws.onmessage = (event) => {
@@ -134,7 +143,8 @@ class OrbitWebController {
       this.highlightActiveAppCard(data.active_app);
     }
 
-    if (data.time) document.getElementById('val-time').textContent = `Time: ${data.time}`;
+    if (data.time) document.getElementById('val-time').textContent = data.time;
+    if (data.date) document.getElementById('val-date').textContent = data.date;
     if (data.ip) document.getElementById('val-ip').textContent = data.ip;
     if (data.wifi_rssi !== undefined) document.getElementById('val-rssi').textContent = `${data.wifi_rssi} dBm`;
     if (data.heap !== undefined) document.getElementById('val-heap').textContent = `${Math.round(data.heap / 1024)} KB`;
@@ -451,6 +461,321 @@ class OrbitWebController {
         this.send({ cmd: 'find_device' });
       });
     }
+  }
+
+  // Wi-Fi Network Setup & Provisioning
+  setupNetworkTab() {
+    const btnScan = document.getElementById('btn-dash-scan');
+    const wifiList = document.getElementById('dash-wifi-list');
+    const ssidInput = document.getElementById('dash-wifi-ssid');
+    const passInput = document.getElementById('dash-wifi-pass');
+    const form = document.getElementById('dashboard-wifi-form');
+    const btnConnect = document.getElementById('btn-dash-connect');
+    const statusBox = document.getElementById('dash-wifi-status');
+    const statusText = document.getElementById('dash-status-text');
+    const statusSub = document.getElementById('dash-status-sub');
+
+    const currSsid = document.getElementById('net-curr-ssid');
+    const currIp = document.getElementById('net-curr-ip');
+    const currRssi = document.getElementById('net-curr-rssi');
+
+    const updateStatusPill = async () => {
+      try {
+        const res = await fetch('/api/wifi/status');
+        const data = await res.json();
+        if (currSsid) currSsid.textContent = data.ssid || (data.ap_active ? 'ORBIT-Setup (AP)' : '--');
+        if (currIp) currIp.textContent = data.ip || '--';
+        if (currRssi) currRssi.textContent = (data.rssi || '--') + ' dBm';
+      } catch (e) {}
+    };
+
+    updateStatusPill();
+
+    const doScan = async () => {
+      if (btnScan) btnScan.disabled = true;
+      if (wifiList) wifiList.innerHTML = '<div style="color:var(--muted); font-size:0.85rem; padding:16px; text-align:center;">Scanning wireless networks...</div>';
+      try {
+        await fetch('/api/wifi/scan', { method: 'POST' });
+        setTimeout(async () => {
+          const res = await fetch('/api/wifi/scan');
+          const data = await res.json();
+          if (btnScan) btnScan.disabled = false;
+          if (!wifiList) return;
+
+          if (!data.networks || data.networks.length === 0) {
+            wifiList.innerHTML = '<div style="color:var(--muted); font-size:0.85rem; padding:16px; text-align:center;">No networks found. Rescan or enter SSID manually.</div>';
+            return;
+          }
+
+          wifiList.innerHTML = '';
+          data.networks.forEach(net => {
+            const item = document.createElement('div');
+            item.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.06); cursor:pointer; transition:background 0.15s;';
+            item.innerHTML = `
+              <div style="font-weight:600; font-size:0.9rem; color:#fff;">
+                ${net.secure ? '🔒' : '🔓'} ${net.ssid}
+              </div>
+              <div style="font-size:0.75rem; color:var(--muted); font-family:monospace;">
+                ${net.rssi} dBm
+              </div>
+            `;
+            item.addEventListener('mouseenter', () => item.style.background = 'rgba(0,255,255,0.1)');
+            item.addEventListener('mouseleave', () => item.style.background = 'transparent');
+            item.addEventListener('click', () => {
+              if (ssidInput) ssidInput.value = net.ssid;
+              if (passInput) passInput.focus();
+            });
+            wifiList.appendChild(item);
+          });
+        }, 1200);
+      } catch (err) {
+        if (btnScan) btnScan.disabled = false;
+        if (wifiList) wifiList.innerHTML = '<div style="color:var(--muted); font-size:0.85rem; padding:16px; text-align:center;">Failed to scan networks.</div>';
+      }
+    };
+
+    if (btnScan) {
+      btnScan.addEventListener('click', doScan);
+    }
+
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const ssid = ssidInput.value.trim();
+        const pass = passInput.value;
+        if (!ssid) return;
+
+        btnConnect.disabled = true;
+        statusBox.style.display = 'block';
+        statusText.style.color = 'var(--cyan)';
+        statusText.textContent = `Connecting to ${ssid}...`;
+        statusSub.textContent = 'Transmitting credentials to ORBIT. Please wait...';
+
+        try {
+          const body = new URLSearchParams({ ssid, pass });
+          await fetch('/api/wifi/connect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body
+          });
+
+          let attempts = 0;
+          const poll = setInterval(async () => {
+            attempts++;
+            try {
+              const res = await fetch('/api/wifi/status');
+              const stat = await res.json();
+              if (stat.connected) {
+                clearInterval(poll);
+                btnConnect.disabled = false;
+                statusText.style.color = 'var(--mint)';
+                statusText.textContent = '✅ Connected Successfully!';
+                statusSub.innerHTML = `Connected to <strong>${stat.ssid}</strong> with IP: <strong>${stat.ip}</strong>`;
+                updateStatusPill();
+                return;
+              }
+            } catch (e) {}
+
+            if (attempts >= 16) {
+              clearInterval(poll);
+              btnConnect.disabled = false;
+              statusText.style.color = 'var(--red)';
+              statusText.textContent = '⚠️ Connection Failed';
+              statusSub.textContent = 'Unable to connect to ' + ssid + '. Please check the password and try again.';
+            }
+          }, 1000);
+        } catch (err) {
+          btnConnect.disabled = false;
+          statusText.style.color = 'var(--red)';
+          statusText.textContent = 'Submission Error';
+          statusSub.textContent = 'Could not communicate with device.';
+        }
+      });
+    }
+  }
+
+  // Device Settings & Complete Hardware Diagnostics
+  setupSettingsTab() {
+    const slider = document.getElementById('settings-brightness-slider');
+    const sliderVal = document.getElementById('settings-brightness-val');
+    const btnRefresh = document.getElementById('btn-refresh-diagnostics');
+    const btnReboot = document.getElementById('btn-reboot-device');
+
+    // Brightness slider control
+    if (slider) {
+      slider.addEventListener('input', (e) => {
+        const val = e.target.value;
+        if (sliderVal) sliderVal.textContent = val + '%';
+        this.send({ cmd: 'set_brightness', val: parseInt(val, 10) });
+      });
+    }
+
+    // Refresh diagnostics
+    const fetchDiagnostics = async () => {
+      try {
+        const res = await fetch('/api/system/info');
+        if (!res.ok) return;
+        const data = await res.json();
+
+        // 1. Device Silicon & ID
+        if (data.device) {
+          const chip = document.getElementById('diag-chip');
+          const cores = document.getElementById('diag-cores');
+          const rev = document.getElementById('diag-rev');
+          const uid = document.getElementById('diag-uid');
+          const mac = document.getElementById('diag-mac');
+
+          if (chip) chip.textContent = data.device.chip || 'ESP32-S3';
+          if (cores) cores.textContent = `${data.device.cores} Cores @ ${data.device.cpu_mhz} MHz`;
+          if (rev) rev.textContent = `Rev v${data.device.revision} (Xtensa LX7)`;
+          if (uid) uid.textContent = data.device.uid || '--';
+          if (mac) mac.textContent = data.device.mac || '--';
+        }
+
+        // 2. OS & Platform
+        if (data.os) {
+          const os = document.getElementById('diag-os');
+          const kernel = document.getElementById('diag-kernel');
+          const idf = document.getElementById('diag-idf');
+          const uptime = document.getElementById('diag-uptime');
+
+          if (os) os.textContent = `${data.os.name} v${data.os.version}`;
+          if (kernel) kernel.textContent = data.os.kernel || 'FreeRTOS 10';
+          if (idf) idf.textContent = `ESP-IDF ${data.os.idf || 'v5.1'}`;
+          if (uptime) {
+            const sec = data.os.uptime_sec || 0;
+            const h = Math.floor(sec / 3600);
+            const m = Math.floor((sec % 3600) / 60);
+            const s = sec % 60;
+            uptime.textContent = `${h}h ${m}m ${s}s`;
+          }
+        }
+
+        // 3. Storage Subsystems
+        if (data.storage) {
+          const sdStatus = document.getElementById('diag-sd-status');
+          const sdCap = document.getElementById('diag-sd-cap');
+          const sdUsed = document.getElementById('diag-sd-used');
+          const lfsUsed = document.getElementById('diag-lfs-used');
+
+          if (sdStatus) {
+            sdStatus.textContent = data.storage.sd_mounted ? 'Mounted & Active' : 'Not Detected';
+            sdStatus.style.color = data.storage.sd_mounted ? 'var(--mint)' : 'var(--amber)';
+          }
+          if (sdCap) {
+            sdCap.textContent = data.storage.sd_mounted ? `${data.storage.sd_total_mb} MB` : 'N/A';
+          }
+          if (sdUsed) {
+            sdUsed.textContent = data.storage.sd_mounted
+              ? `${data.storage.sd_used_mb} MB / Free: ${data.storage.sd_free_mb} MB`
+              : 'N/A';
+          }
+          if (lfsUsed) {
+            const usedKb = Math.round((data.storage.lfs_used_bytes || 0) / 1024);
+            const totKb = Math.round((data.storage.lfs_total_bytes || 0) / 1024);
+            lfsUsed.textContent = `${usedKb} KB / ${totKb} KB`;
+          }
+        }
+
+        // 4. Flash ROM & Partition
+        if (data.flash) {
+          const fSize = document.getElementById('diag-flash-size');
+          const fSpeed = document.getElementById('diag-flash-speed');
+          const sketch = document.getElementById('diag-sketch-size');
+          const freeSketch = document.getElementById('diag-free-sketch');
+
+          if (fSize) {
+            const mb = Math.round(data.flash.size_bytes / (1024 * 1024));
+            fSize.textContent = `${mb} MB SPI Flash`;
+          }
+          if (fSpeed) {
+            const mhz = Math.round(data.flash.speed_hz / 1000000);
+            fSpeed.textContent = `${mhz} MHz (Octal SPI)`;
+          }
+          if (sketch) {
+            const skKb = Math.round(data.flash.sketch_bytes / 1024);
+            sketch.textContent = `${skKb} KB`;
+          }
+          if (freeSketch) {
+            const frKb = Math.round(data.flash.free_sketch_bytes / 1024);
+            freeSketch.textContent = `${frKb} KB available`;
+          }
+        }
+
+        // 5. Memory Architecture
+        if (data.memory) {
+          const heapFree = document.getElementById('diag-heap-free');
+          const heapMin = document.getElementById('diag-heap-min');
+          const heapTot = document.getElementById('diag-heap-total');
+          const psramStat = document.getElementById('diag-psram-status');
+          const psramFree = document.getElementById('diag-psram-free');
+
+          if (heapFree) heapFree.textContent = `${Math.round(data.memory.heap_free / 1024)} KB`;
+          if (heapMin) heapMin.textContent = `${Math.round(data.memory.heap_min_free / 1024)} KB (watermark)`;
+          if (heapTot) heapTot.textContent = `${Math.round(data.memory.heap_total / 1024)} KB`;
+
+          if (psramStat) {
+            psramStat.textContent = data.memory.psram_found
+              ? `${Math.round(data.memory.psram_total / (1024 * 1024))} MB Embedded Octal`
+              : 'Not Installed';
+            psramStat.style.color = data.memory.psram_found ? 'var(--mint)' : 'var(--muted)';
+          }
+          if (psramFree) {
+            psramFree.textContent = data.memory.psram_found
+              ? `${Math.round(data.memory.psram_free / 1024)} KB`
+              : 'N/A';
+          }
+        }
+
+        // 6. Network & Connectivity
+        if (data.network) {
+          const netStat = document.getElementById('diag-net-status');
+          const netSsid = document.getElementById('diag-net-ssid');
+          const netIp = document.getElementById('diag-net-ip');
+          const netGw = document.getElementById('diag-net-gw');
+          const netMask = document.getElementById('diag-net-mask');
+          const netRssi = document.getElementById('diag-net-rssi');
+
+          if (netStat) {
+            netStat.textContent = data.network.connected ? 'Station (Connected)' : (data.network.ap_active ? 'SoftAP Hotspot' : 'Disconnected');
+            netStat.style.color = data.network.connected ? 'var(--mint)' : 'var(--amber)';
+          }
+          if (netSsid) netSsid.textContent = data.network.connected ? data.network.ssid : (data.network.softap_ssid || '--');
+          if (netIp) netIp.textContent = data.network.connected ? data.network.ip : (data.network.softap_ip || '--');
+          if (netGw) netGw.textContent = data.network.gateway || '--';
+          if (netMask) netMask.textContent = data.network.subnet || '--';
+          if (netRssi) netRssi.textContent = `${data.network.rssi} dBm`;
+        }
+      } catch (e) {
+        console.warn('Diagnostics fetch error:', e);
+      }
+    };
+
+    if (btnRefresh) {
+      btnRefresh.addEventListener('click', () => fetchDiagnostics());
+    }
+
+    if (btnReboot) {
+      btnReboot.addEventListener('click', async () => {
+        if (confirm('Reboot ORBIT ESP32-S3 device now?')) {
+          try {
+            await fetch('/api/system/reboot', { method: 'POST' });
+            alert('Reboot command dispatched. Device is restarting...');
+          } catch (e) {
+            alert('Reboot command sent.');
+          }
+        }
+      });
+    }
+
+    // Tab click triggers instant refresh
+    const settingsTabBtn = document.querySelector('.nav-tab[data-tab="settings"]');
+    if (settingsTabBtn) {
+      settingsTabBtn.addEventListener('click', () => fetchDiagnostics());
+    }
+
+    // Initial load
+    fetchDiagnostics();
   }
 
   // Offline Simulation Demo

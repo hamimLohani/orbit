@@ -23,7 +23,8 @@ struct TelemetryData {
 
     // Time & Astral
     char timeStr[12] = "12:00:00";
-    char dateStr[16] = "Jan 01, 2026";
+    char dateStr[24] = "Jan 01, 2026";
+    bool timeSynced = false;
     float moonPhase = 0.5f;     // 0.0 = New, 0.5 = Full
     bool isNightTime = false;
 
@@ -57,7 +58,7 @@ public:
     void setClimate(float temp, float hum);
     void setAudio(float rms, float peak, float db, const uint8_t* bins);
     void setNoiseDistraction(bool alert);
-    void setTime(const char* time, const char* date, bool isNight);
+    void setTime(const char* time, const char* date, bool isNight, bool synced = true);
     void setMoonPhase(float phase);
     void setNetwork(bool connected, int8_t rssi, const char* ip);
     void setSystemStatus(uint32_t heap, uint32_t uptime, const char* appId);

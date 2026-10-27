@@ -98,7 +98,7 @@ Concurrent access to shared memory structures and hardware buses is governed thr
 FreeRTOS implements a **preemptive, priority-based scheduler with time-slicing**:
 
 1. **High Priority (Priority 4)**:
-   * `InputTask`: Tactile pushbuttons demand immediate response to debounce transitions and compute hold thresholds (500ms Back, 2000ms Home).
+   * `InputTask`: Tactile pushbuttons demand immediate response to debounce transitions and instant press-down directional clicks, auto-repeat, and compute hold thresholds (1.0s Enter = Back, 2.5s Enter = Home).
    * `AudioTask`: I2S DMA buffers must be serviced rapidly to prevent audio ring buffer overflow during sound level analysis and WAV voice memo capture.
 2. **Medium Priority (Priority 3)**:
    * `DisplayTask`: Governed by `vTaskDelayUntil()` to achieve a rock-solid 30 FPS display cadence without accumulating timing drift.
@@ -152,8 +152,8 @@ The ESP32-S3 firmware optimizes memory allocation using FreeRTOS heap memory tie
 
 * **Internal Fast SRAM (512 KB)**:
   * Used for FreeRTOS task stacks, kernel control blocks, double-buffered display canvas (`Canvas`), and DMA-coherent I2S microphone buffers.
-* **External PSRAM / SPIRAM (2–8 MB)**:
-  * Used for large static assets, LittleFS web filesystem buffers, decompression tables, and WAV voice memo audio buffers.
+* **External PSRAM / SPIRAM (8 MB Octal OPI)**:
+  * Enabled via compile options (`PSRAM=opi`, `FlashSize=8M`, `PartitionScheme=default_8MB`) and initialized in `src/main.cpp` via `psramInit()`. Used for large audio buffers, web assets, and high-performance game state.
 * **Task Stack Monitoring**:
   * FreeRTOS stack high-water marking (`uxTaskGetStackHighWaterMark()`) and hardware stack-canary checks detect stack overflows before system corruption can occur.
 

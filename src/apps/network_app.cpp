@@ -2,6 +2,7 @@
 #include "src/core/app_registry.h"
 #include "src/core/shared_data.h"
 #include "src/network/wifi_manager.h"
+#include "src/network/ntp_sync.h"
 #include "src/display/theme.h"
 
 REGISTER_APP(NetworkApp);
@@ -15,36 +16,55 @@ void NetworkApp::onRender(RenderEngine& gfx) {
     TelemetryData telem = SharedData::getInstance().getData();
 
     gfx.fillRect(0, STATUS_BAR_HEIGHT, SCREEN_WIDTH, CONTENT_HEIGHT, COLOR_VOID_DARK);
-    gfx.drawHeader("NETWORK STATUS", 10);
-
-    // Wi-Fi Status Card
-    gfx.drawCard(8, STATUS_BAR_HEIGHT + 28, 112, 46, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
+    gfx.drawHeader("NETWORK & TIME", 10);
 
     if (telem.wifiConnected) {
-        gfx.drawText(14, STATUS_BAR_HEIGHT + 33, "WI-FI CONNECTED", COLOR_NEON_MINT, 1);
-        gfx.drawText(14, STATUS_BAR_HEIGHT + 45, telem.ipAddress, COLOR_TEXT_LIGHT, 1);
+        // Card 1: Wi-Fi Connection
+        gfx.drawCard(8, STATUS_BAR_HEIGHT + 26, 112, 40, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
+        gfx.drawText(14, STATUS_BAR_HEIGHT + 30, "ONLINE (STA)", COLOR_NEON_MINT, 1);
+        
+        String ssid = WifiManager::getInstance().getSsid();
+        if (ssid.length() > 14) ssid = ssid.substring(0, 12) + "..";
+        gfx.drawText(14, STATUS_BAR_HEIGHT + 41, ssid.c_str(), COLOR_TEXT_LIGHT, 1);
+        gfx.drawText(14, STATUS_BAR_HEIGHT + 52, telem.ipAddress, COLOR_NEON_CYAN, 1);
 
-        char rssiBuf[24];
-        snprintf(rssiBuf, sizeof(rssiBuf), "Signal: %d dBm", telem.wifiRssi);
-        gfx.drawText(14, STATUS_BAR_HEIGHT + 57, rssiBuf, COLOR_TEXT_MUTED, 1);
+        // Card 2: Synchronized Time & Date (NTP)
+        gfx.drawCard(8, STATUS_BAR_HEIGHT + 70, 112, 46, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
+        const char* syncStatus = telem.timeSynced ? "NTP SYNCED" : "NTP SYNCING...";
+        uint16_t statusColor = telem.timeSynced ? COLOR_NEON_MINT : COLOR_NEON_AMBER;
+        gfx.drawText(14, STATUS_BAR_HEIGHT + 74, syncStatus, statusColor, 1);
+        gfx.drawText(14, STATUS_BAR_HEIGHT + 86, telem.timeStr, COLOR_TEXT_LIGHT, 2);
+        gfx.drawText(14, STATUS_BAR_HEIGHT + 104, telem.dateStr, COLOR_NEON_CYAN, 1);
+
+        // URL & Action Hint at Bottom
+        gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 120, "http://orbit.local", COLOR_TEXT_MUTED, 1);
+        gfx.drawTextCentered(64, SCREEN_HEIGHT - 10, "ENTER: Setup AP", COLOR_TEXT_MUTED, 1);
     } else {
-        gfx.drawText(14, STATUS_BAR_HEIGHT + 33, "DISCONNECTED", COLOR_NEON_RED, 1);
-        gfx.drawText(14, STATUS_BAR_HEIGHT + 48, "AP: ORBIT-Setup", COLOR_TEXT_LIGHT, 1);
+        // Hotspot Setup Mode Card
+        gfx.drawCard(8, STATUS_BAR_HEIGHT + 26, 112, 54, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
+        gfx.drawText(14, STATUS_BAR_HEIGHT + 31, "SETUP HOTSPOT", COLOR_NEON_PURPLE, 1);
+        gfx.drawText(14, STATUS_BAR_HEIGHT + 43, "SSID: ORBIT-Setup", COLOR_TEXT_LIGHT, 1);
+        gfx.drawText(14, STATUS_BAR_HEIGHT + 54, "Pass: orbit1234", COLOR_TEXT_MUTED, 1);
+        gfx.drawText(14, STATUS_BAR_HEIGHT + 65, "IP: 192.168.4.1", COLOR_NEON_CYAN, 1);
+
+        // Instruction Card
+        gfx.drawCard(8, STATUS_BAR_HEIGHT + 84, 112, 36, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
+        gfx.drawText(14, STATUS_BAR_HEIGHT + 89, "CONNECT WITH PHONE", COLOR_TEXT_MUTED, 1);
+        gfx.drawText(14, STATUS_BAR_HEIGHT + 101, "Browse 192.168.4.1", COLOR_NEON_MINT, 1);
+
+        gfx.drawTextCentered(64, SCREEN_HEIGHT - 10, "ENTER: Reconnect STA", COLOR_TEXT_MUTED, 1);
     }
-
-    // mDNS & Web Dashboard URL Card
-    gfx.drawCard(8, STATUS_BAR_HEIGHT + 78, 112, 44, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
-    gfx.drawText(14, STATUS_BAR_HEIGHT + 83, "WEB DASHBOARD", COLOR_TEXT_MUTED, 1);
-    gfx.drawText(14, STATUS_BAR_HEIGHT + 95, "http://orbit.local", COLOR_NEON_CYAN, 1);
-    gfx.drawText(14, STATUS_BAR_HEIGHT + 107, "Port 80 /ws", COLOR_TEXT_MUTED, 1);
-
-    gfx.drawTextCentered(64, SCREEN_HEIGHT - 12, "ENTER: Reconnect", COLOR_TEXT_MUTED, 1);
 }
 
 bool NetworkApp::onButtonEvent(const ButtonEvent& evt) {
     if (evt.type == BUTTON_CLICK && (evt.button == BTN_ID_ENTER || evt.button == BTN_ID_SELECT)) {
-        WifiManager::getInstance().init();
-        RenderEngine::getInstance().showToast("NETWORK", "Reconnecting Wi-Fi...", COLOR_NEON_CYAN, 3000);
+        if (WifiManager::getInstance().isConnected()) {
+            WifiManager::getInstance().startApFallback();
+            RenderEngine::getInstance().showToast("WI-FI", "Setup AP Started", COLOR_NEON_PURPLE, 2500);
+        } else {
+            WifiManager::getInstance().init();
+            RenderEngine::getInstance().showToast("WI-FI", "Attempting Reconnect", COLOR_NEON_CYAN, 2500);
+        }
         return true;
     }
     return false;

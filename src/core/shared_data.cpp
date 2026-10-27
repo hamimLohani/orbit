@@ -55,11 +55,12 @@ void SharedData::setNoiseDistraction(bool alert) {
     }
 }
 
-void SharedData::setTime(const char* time, const char* date, bool isNight) {
+void SharedData::setTime(const char* time, const char* date, bool isNight, bool synced) {
     if (_mutex && xSemaphoreTake(_mutex, pdMS_TO_TICKS(15)) == pdTRUE) {
         if (time) strncpy(_data.timeStr, time, sizeof(_data.timeStr) - 1);
         if (date) strncpy(_data.dateStr, date, sizeof(_data.dateStr) - 1);
         _data.isNightTime = isNight;
+        _data.timeSynced = synced;
         xSemaphoreGive(_mutex);
     }
 }

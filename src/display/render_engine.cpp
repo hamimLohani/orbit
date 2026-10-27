@@ -141,7 +141,7 @@ void RenderEngine::drawBitmap16x16(int16_t x, int16_t y, const uint8_t* bitmap, 
 }
 
 void RenderEngine::drawIcon(int16_t x, int16_t y, uint8_t iconIndex, uint16_t color, uint16_t bg) {
-    if (iconIndex < 12) {
+    if (iconIndex < (sizeof(SYSTEM_ICONS) / sizeof(SYSTEM_ICONS[0]))) {
         const uint8_t* iconData = (const uint8_t*)pgm_read_ptr(&(SYSTEM_ICONS[iconIndex]));
         drawBitmap16x16(x, y, iconData, color, bg);
     }

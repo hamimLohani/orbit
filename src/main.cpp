@@ -150,6 +150,15 @@ void setup() {
     Serial.printf("   ORBIT v%s Embedded OS Starting...\n", ORBIT_VERSION_STR);
     Serial.printf("==========================================\n");
 
+    // 0. Initialize & Verify 8MB Octal PSRAM (SPIRAM)
+    if (psramInit()) {
+        Serial.printf("[PSRAM] 8MB Octal PSRAM active! Total: %u KB, Free: %u KB\n",
+                      (unsigned)(ESP.getPsramSize() / 1024),
+                      (unsigned)(ESP.getFreePsram() / 1024));
+    } else {
+        Serial.println("[PSRAM] Not detected or disabled in build flags.");
+    }
+
     // 1. Core Services
     SettingsManager::getInstance().init();
     SharedData::getInstance().init();

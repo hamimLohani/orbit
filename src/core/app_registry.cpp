@@ -137,7 +137,7 @@ void AppRegistry::renderCarousel(RenderEngine& gfx) {
 
 void AppRegistry::handleButtonEvent(const ButtonEvent& evt) {
     if (_registryMutex && xSemaphoreTakeRecursive(_registryMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
-        // 1. Threshold: 2.0s Hold on ENTER -> Direct return to HOME
+        // 1. Threshold: 2.5s Long Hold on ENTER -> Direct return to HOME
         if (evt.button == BTN_ID_ENTER && evt.type == BUTTON_HOLD_2S) {
             returnHome();
             _inCarousel = false;
@@ -146,16 +146,15 @@ void AppRegistry::handleButtonEvent(const ButtonEvent& evt) {
             return;
         }
 
-        // 2. Threshold: 0.5s Hold on ENTER -> Go BACK
-        if (evt.button == BTN_ID_ENTER && evt.type == BUTTON_HOLD_05S) {
+        // 2. Threshold: 1.0s Hold on ENTER -> Go BACK ("1s enter=back")
+        if (evt.button == BTN_ID_ENTER && (evt.type == BUTTON_HOLD_1S || evt.type == BUTTON_HOLD_05S)) {
             if (_inCarousel) {
                 _inCarousel = false;
+                RenderEngine::getInstance().showToast("BACK", "Closed Launcher", COLOR_TEXT_MUTED, 800);
             } else if (_activeIndex != 0) {
                 returnHome();
-            } else {
-                toggleCarousel();
+                RenderEngine::getInstance().showToast("BACK", "Returned to Home", COLOR_TEXT_MUTED, 1000);
             }
-            RenderEngine::getInstance().showToast("BACK", "Previous Screen", COLOR_TEXT_MUTED, 1000);
             xSemaphoreGiveRecursive(_registryMutex);
             return;
         }

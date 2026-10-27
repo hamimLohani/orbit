@@ -6,6 +6,7 @@
 #include "src/sensors/mic_sensor.h"
 #include "src/display/render_engine.h"
 #include "src/core/settings_manager.h"
+#include "src/network/ntp_sync.h"
 
 WebSocketServer::WebSocketServer() : _ws("/ws") {}
 
@@ -74,6 +75,9 @@ void WebSocketServer::handleMessage(AsyncWebSocketClient* client, void* arg, uin
             } else if (strcmp(action, "stop") == 0) {
                 MicSensor::getInstance().stopRecording();
             }
+        } else if (strcmp(cmd, "sync_time") == 0) {
+            int tzOffset = doc["tz_offset"] | 360;
+            NtpSync::getInstance().setTimezoneOffset((int16_t)tzOffset);
         }
     }
 }
@@ -93,6 +97,8 @@ void WebSocketServer::broadcastTelemetry() {
     d["wifi_rssi"] = telem.wifiRssi;
     d["ip"] = telem.ipAddress;
     d["time"] = telem.timeStr;
+    d["date"] = telem.dateStr;
+    d["time_synced"] = telem.timeSynced;
     d["active_app"] = telem.activeAppId;
     d["heap"] = telem.freeHeap;
     d["uptime"] = telem.uptimeSec;

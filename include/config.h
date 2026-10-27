@@ -68,10 +68,12 @@
 #define PIN_BTN_ACTION        PIN_BTN_ENTER
 
 // Button Debounce & Hold Timings (ms)
-#define BTN_DEBOUNCE_MS       35
-#define BTN_HOLD_05S_MS       500  // 0.5s -> Back
-#define BTN_HOLD_2S_MS        2000 // 2.0s -> Home
-#define BTN_REPEAT_MS         150
+#define BTN_DEBOUNCE_MS       25
+#define BTN_HOLD_1S_MS        1000 // 1.0s -> Back (1s enter=back)
+#define BTN_HOLD_05S_MS       BTN_HOLD_1S_MS // Backward compatibility alias
+#define BTN_HOLD_2S_MS        2500 // 2.5s -> Home
+#define BTN_REPEAT_DELAY_MS   350  // Initial hold delay before repeat
+#define BTN_REPEAT_MS         120  // Continuous repeat interval
 
 // ------------------------------------------------------------------------------
 // 5. System Timings & Schedulers (ms)

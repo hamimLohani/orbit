@@ -21,7 +21,7 @@
 
 | Component | Interface | Description & Purpose |
 | :--- | :--- | :--- |
-| **ESP32-S3 DevKit** | MCU Core | Dual-core Xtensa LX7 @ 240MHz, 8MB Flash, 512KB SRAM, 2/8MB PSRAM, Wi-Fi 802.11 b/g/n, BLE 5.0 |
+| **ESP32-S3 DevKit** | MCU Core | Dual-core Xtensa LX7 @ 240MHz, 8MB Flash, 512KB SRAM, 8MB Octal PSRAM (OPI, active), Wi-Fi 802.11 b/g/n, BLE 5.0 |
 | **ST7735 1.8" TFT** | SPI (Shared) | 128×160 resolution, 16-bit RGB565 color depth, hardware PWM backlight control |
 | **MicroSD Slot** (on TFT) | SPI (Shared) | Dedicated Chip Select (`SD_CS`), stores wallpapers, custom icons, voice memos (`.wav`), logs, and configs |
 | **INMP441 MEMS Mic** | I2S (DMA) | Omnidirectional digital microphone for ambient decibel monitoring, audio spectrum analysis, and voice memos |
@@ -93,7 +93,7 @@ The ST7735 TFT and MicroSD card share the high-speed SPI bus (MOSI:11, MISO:13, 
 |  Hardware Layer  |                     |    Core Engine    |                     | Application Layer |
 +------------------+                     +-------------------+                     +-------------------+
 | - Display ST7735 |                     | - State Machine   |                     | - AppBase (SDK)   |
-| - SD Storage     | <=== Bus Mutex ===> | - App Registry    | <=== Event Bus ===> | - Core Apps (12)  |
+| - SD Storage     | <=== Bus Mutex ===> | - App Registry    | <=== Event Bus ===> | - Core Apps (13)  |
 | - I2S INMP441    |                     | - Shared Telemetry|                     | - Future Plugins  |
 | - DHT11 Sensor   |                     | - Settings (NVS)  |                     +-------------------+
 | - RGB / Alert LED|                     +-------------------+                               |
@@ -181,7 +181,8 @@ In addition to the baseline features, ORBIT v2 integrates seven major advanced c
 | `08` | **Lights** | `ICON_LIGHTS` | WS2812 RGB lighting controller (Ambient, Disco, Flame, Breathe, Solid Picker). |
 | `09` | **Lander** | `ICON_GAME` | Retro vector lunar lander physics arcade game. |
 | `10` | **Network** | `ICON_WIFI` | Wi-Fi scanner, RSSI signal meter, NTP synchronization status, IP/mDNS info, OTA trigger. |
-| `11` | **System** | `ICON_SYSTEM` | Display backlight slider, visual theme picker, SD card storage statistics, factory reset. |
+| `11` | **System** | `ICON_SYSTEM` | Display backlight slider, 5-page hardware diagnostics (Storage, Silicon ID, Memory, Flash, Network), factory reset. |
+| `12` | **Snake**  | `ICON_SNAKE`  | Full port of Snake CLI: Classic, Time Attack, Survival, Zen modes, 6 power-ups/hazards, anti-suicide FIFO queue, persistent high scores. |
 
 ---
 

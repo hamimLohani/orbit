@@ -18,6 +18,7 @@ ORBIT is an ambient sensing companion and desktop embedded operating system runn
 - 🎙️ **Voice Memo Recorder & AI Pipeline**: One-touch PTT voice capture directly to SD card as 16kHz WAV files (`/recordings/memos/memo_xxx.wav`) with browser audio playback and Whisper AI transcription integration.
 - 🪐 **Space & Astro Dashboard**: Procedural lunar phase calculator with illumination percentage and ISS International Space Station orbit pass tracker.
 - 🚀 **Orbit Lander Retro Mini-Game**: Vector physics lunar lander arcade game playable via the 5 navigation buttons.
+- 🐍 **Snake Arcade Game**: Full feature-rich port of Snake CLI with Classic, Time Attack, Survival, and Zen modes, procedural mazes, power-ups (Slow-Mo, Ghost 10s Zen mode, 3x Multiplier, Shrink, Poison hazard), anti-suicide direction queue, reactive WS2812 RGB lighting, and NVS persistent high scores.
 - 🔔 **Global Toast Notification Overlay**: Sliding top-banner alert system that can display priority webhook messages across any active app.
 - 🧩 **Extensible Polymorphic App SDK**: Add any new application to the OS in under 5 minutes with zero modifications to core OS files using `AppBase` and `REGISTER_APP()`.
 
@@ -50,7 +51,7 @@ All pin assignments are centralized in [`include/config.h`](include/config.h):
 | | BTN_DOWN | GPIO 3 | Directional DOWN / Drift reverse (Active LOW to GND) |
 | | BTN_LEFT | GPIO 17 | Directional LEFT / Steer left / Dim (Active LOW to GND) |
 | | BTN_RIGHT | GPIO 18 | Directional RIGHT / Steer right / Brighten (Active LOW to GND) |
-| | BTN_ENTER | GPIO 16 | Tap: Enter | Hold 0.5s: Back | Hold 2.0s: Home |
+| | BTN_ENTER | GPIO 16 | Tap: Enter / Select | Hold 1.0s: Back | Hold 2.5s: Home |
 
 ---
 
@@ -59,10 +60,12 @@ All pin assignments are centralized in [`include/config.h`](include/config.h):
 ### Option A: Using Arduino CLI
 ```bash
 # Compile
-arduino-cli compile --fqbn esp32:esp32:esp32s3 .
+arduino-cli compile --fqbn esp32:esp32:esp32s3 --board-options CDCOnBoot=cdc,PSRAM=opi,FlashSize=8M,PartitionScheme=default_8MB .
 
 # Flash to device
-arduino-cli upload -p /dev/cu.usbmodem* --fqbn esp32:esp32:esp32s3 .
+arduino-cli upload -p /dev/cu.usbmodem* --fqbn esp32:esp32:esp32s3 --board-options CDCOnBoot=cdc,PSRAM=opi,FlashSize=8M,PartitionScheme=default_8MB .
+# Or simply run the automated script:
+upload_esp32s3
 ```
 
 ### Option B: Using PlatformIO
@@ -82,11 +85,20 @@ pio device monitor
 
 ---
 
-## 📱 Web Companion Dashboard
+## 📱 Wi-Fi Setup & Web Companion Dashboard
 
-Once booted, ORBIT starts an mDNS responder:
+### 1. Connecting from Another Device (Phone / Laptop Captive Portal)
+If ORBIT is not yet connected to your home Wi-Fi:
+1. On your phone or computer, open Wi-Fi settings and connect to **`ORBIT-Setup`** (password: `orbit1234`).
+2. The **Captive Portal** auto-pops up on iOS, Android, and Windows (or navigate to `http://192.168.4.1` or `http://orbit.local/wifi`).
+3. Select your local 2.4 GHz Wi-Fi network from the auto-scanned list (with live signal strength and encryption badges).
+4. Enter your Wi-Fi password and tap **Connect to Wi-Fi**.
+5. ORBIT saves credentials to NVS storage, connects to your router, displays the assigned IP on screen, and keeps the setup portal alive with a direct link to the dashboard.
+
+### 2. Live Web Companion Dashboard
+Once connected to your home network:
 - Open your browser to: **`http://orbit.local`** (or the IP displayed on the Network screen).
-- **Fallback AP Mode**: If no Wi-Fi credentials are saved, connect your phone or laptop to Wi-Fi SSID **`ORBIT-Setup`** (password: `orbit1234`) and browse to `http://192.168.4.1`.
+- Access real-time sensor HUD, 16-band spectrum visualizer, app launcher, RGB Studio, SD voice memo transcription, and live Wi-Fi management.
 
 ---
 

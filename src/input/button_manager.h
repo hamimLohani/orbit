@@ -24,15 +24,16 @@ enum ButtonId {
 #define BTN_ID_ACTION BTN_ID_ENTER
 
 enum ButtonEventType {
-    BUTTON_CLICK = 0,    // Short click (< 500ms)
-    BUTTON_HOLD_05S,     // Held >= 500ms (Back)
-    BUTTON_HOLD_2S,      // Held >= 2000ms (Home)
+    BUTTON_CLICK = 0,    // Short click (< 1000ms for Enter; immediate for directional)
+    BUTTON_HOLD_1S,      // Held >= 1000ms (1s Enter = Back)
+    BUTTON_HOLD_2S,      // Held >= 2500ms (Home)
     BUTTON_RELEASE,
     BUTTON_REPEAT
 };
 
 // Backward compatibility alias
-#define BUTTON_HOLD BUTTON_HOLD_05S
+#define BUTTON_HOLD_05S BUTTON_HOLD_1S
+#define BUTTON_HOLD     BUTTON_HOLD_1S
 
 struct ButtonEvent {
     ButtonId button;
@@ -61,12 +62,13 @@ private:
 
     struct ButtonState {
         uint8_t pin;
-        bool isDown;
-        bool wasDown;
-        bool hold05Fired;
-        bool hold2sFired;
-        uint32_t pressTime;
-        uint32_t lastRepeatTime;
+        bool isDown;               // Debounced stable state (true = pressed)
+        bool lastRawReading;       // Raw reading from digitalRead
+        uint32_t lastDebounceTime; // When rawReading last toggled
+        uint32_t pressTime;        // When isDown transitioned to true
+        uint32_t lastRepeatTime;   // When last repeat event fired
+        bool hold1sFired;          // True if 1.0s hold event fired
+        bool hold2sFired;          // True if 2.5s hold event fired
     };
 
     ButtonState _buttons[BTN_ID_COUNT];

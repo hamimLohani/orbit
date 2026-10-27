@@ -209,9 +209,9 @@ All five push buttons utilize the ESP32-S3's internal pull-up resistors (`INPUT_
                    +-------------------+
                    |   BTN_ENTER(G16)  |
                    +-------------------+
-            • Short Tap (<0.5s): Select / Open
-            • Hold 0.5s        : Back / Close
-            • Hold 2.0s        : Return Home
+            • Short Tap (<1.0s): Select / Open / Action
+            • Hold 1.0s        : Back to Previous / Close
+            • Hold 2.5s        : Return Home Dashboard
 ```
 
 #### Electrical Wiring Schematic (Per Button)
@@ -229,13 +229,13 @@ All five push buttons utilize the ESP32-S3's internal pull-up resistors (`INPUT_
 ```
 
 #### Button Action Map:
-| Button | GPIO Pin | Short Click (< 0.5s) | Hold 0.5s | Hold 2.0s |
-| :--- | :--- | :--- | :--- | :--- |
-| **`ENTER`** | **GPIO 16** | **Select / Enter / Open Carousel / Play-Pause / Toggle** | **Back to previous screen / Dismiss carousel** | **Instant return to Home Dashboard from anywhere** |
-| **`LEFT`** | **GPIO 17** | **Previous app / Steer left (Lander) / Dim backlight & LED** | Directional auto-repeat (150ms) | — |
-| **`RIGHT`** | **GPIO 18** | **Next app / Steer right (Lander) / Brighten backlight & LED**| Directional auto-repeat (150ms) | — |
-| **`UP`** | **GPIO 1** | **Previous app / Lander thruster / Value adjust up** | Directional auto-repeat (150ms) | — |
-| **`DOWN`** | **GPIO 3** | **Next app / Lander reverse drift / Value adjust down** | Directional auto-repeat (150ms) | — |
+| Button | GPIO Pin | Instant Press-Down | Short Click (< 1.0s) | Hold 1.0s (Back) | Long Hold 2.5s (Home) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`ENTER`** | **GPIO 16** | Debounced state timing starts | **Select / Enter / Open Carousel / Play-Pause / Toggle** | **Back to previous screen / Dismiss launcher** | **Instant return to Home Dashboard from anywhere** |
+| **`LEFT`** | **GPIO 17** | **Instant Steer Left / Prev App / Dim** | — | Directional auto-repeat (120ms) | — |
+| **`RIGHT`** | **GPIO 18** | **Instant Steer Right / Next App / Brighten** | — | Directional auto-repeat (120ms) | — |
+| **`UP`** | **GPIO 1** | **Instant Thruster / Steer Up / Value Up** | — | Directional auto-repeat (120ms) | — |
+| **`DOWN`** | **GPIO 3** | **Instant Drift Invert / Steer Down / Value Down** | — | Directional auto-repeat (120ms) | — |
 
 ---
 
