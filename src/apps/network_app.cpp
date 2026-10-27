@@ -19,38 +19,38 @@ void NetworkApp::onRender(RenderEngine& gfx) {
     gfx.drawHeader("NETWORK & TIME", 10);
 
     if (telem.wifiConnected) {
-        // Card 1: Wi-Fi Connection
-        gfx.drawCard(8, STATUS_BAR_HEIGHT + 26, 112, 40, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
-        gfx.drawText(14, STATUS_BAR_HEIGHT + 30, "ONLINE (STA)", COLOR_NEON_MINT, 1);
+        // Card 1: Wi-Fi Connection (starts at y=40, height 42 -> ends at y=82)
+        gfx.drawCard(8, STATUS_BAR_HEIGHT + 26, 112, 42, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
+        gfx.drawText(14, STATUS_BAR_HEIGHT + 31, "ONLINE (STA)", COLOR_NEON_MINT, 1);
         
         String ssid = WifiManager::getInstance().getSsid();
         if (ssid.length() > 14) ssid = ssid.substring(0, 12) + "..";
-        gfx.drawText(14, STATUS_BAR_HEIGHT + 41, ssid.c_str(), COLOR_TEXT_LIGHT, 1);
-        gfx.drawText(14, STATUS_BAR_HEIGHT + 52, telem.ipAddress, COLOR_NEON_CYAN, 1);
+        gfx.drawText(14, STATUS_BAR_HEIGHT + 43, ssid.c_str(), COLOR_TEXT_LIGHT, 1);
+        gfx.drawText(14, STATUS_BAR_HEIGHT + 54, telem.ipAddress, COLOR_NEON_CYAN, 1);
 
-        // Card 2: Synchronized Time & Date (NTP)
-        gfx.drawCard(8, STATUS_BAR_HEIGHT + 70, 112, 46, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
+        // Card 2: Synchronized Time & Date (starts at y=86, height 46 -> ends at y=132)
+        gfx.drawCard(8, STATUS_BAR_HEIGHT + 72, 112, 46, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
         const char* syncStatus = telem.timeSynced ? "NTP SYNCED" : "NTP SYNCING...";
         uint16_t statusColor = telem.timeSynced ? COLOR_NEON_MINT : COLOR_NEON_AMBER;
-        gfx.drawText(14, STATUS_BAR_HEIGHT + 74, syncStatus, statusColor, 1);
-        gfx.drawText(14, STATUS_BAR_HEIGHT + 86, telem.timeStr, COLOR_TEXT_LIGHT, 2);
-        gfx.drawText(14, STATUS_BAR_HEIGHT + 104, telem.dateStr, COLOR_NEON_CYAN, 1);
+        gfx.drawText(14, STATUS_BAR_HEIGHT + 76, syncStatus, statusColor, 1);
+        gfx.drawText(14, STATUS_BAR_HEIGHT + 88, telem.timeStr, COLOR_TEXT_LIGHT, 2);
+        gfx.drawText(14, STATUS_BAR_HEIGHT + 105, telem.dateStr, COLOR_NEON_CYAN, 1);
 
         // URL & Action Hint at Bottom
-        gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 120, "http://orbit.local", COLOR_TEXT_MUTED, 1);
+        gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 122, "http://orbit.local", COLOR_TEXT_MUTED, 1);
         gfx.drawTextCentered(64, SCREEN_HEIGHT - 10, "ENTER: Setup AP", COLOR_TEXT_MUTED, 1);
     } else {
-        // Hotspot Setup Mode Card
-        gfx.drawCard(8, STATUS_BAR_HEIGHT + 26, 112, 54, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
+        // Hotspot Setup Mode Card (starts at y=40, height 52 -> ends at y=92)
+        gfx.drawCard(8, STATUS_BAR_HEIGHT + 26, 112, 52, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
         gfx.drawText(14, STATUS_BAR_HEIGHT + 31, "SETUP HOTSPOT", COLOR_NEON_PURPLE, 1);
         gfx.drawText(14, STATUS_BAR_HEIGHT + 43, "SSID: ORBIT-Setup", COLOR_TEXT_LIGHT, 1);
         gfx.drawText(14, STATUS_BAR_HEIGHT + 54, "Pass: orbit1234", COLOR_TEXT_MUTED, 1);
         gfx.drawText(14, STATUS_BAR_HEIGHT + 65, "IP: 192.168.4.1", COLOR_NEON_CYAN, 1);
 
-        // Instruction Card
-        gfx.drawCard(8, STATUS_BAR_HEIGHT + 84, 112, 36, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
-        gfx.drawText(14, STATUS_BAR_HEIGHT + 89, "CONNECT WITH PHONE", COLOR_TEXT_MUTED, 1);
-        gfx.drawText(14, STATUS_BAR_HEIGHT + 101, "Browse 192.168.4.1", COLOR_NEON_MINT, 1);
+        // Instruction Card (starts at y=96, height 36 -> ends at y=132)
+        gfx.drawCard(8, STATUS_BAR_HEIGHT + 82, 112, 36, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
+        gfx.drawText(14, STATUS_BAR_HEIGHT + 87, "CONNECT WITH PHONE", COLOR_TEXT_MUTED, 1);
+        gfx.drawText(14, STATUS_BAR_HEIGHT + 99, "Browse 192.168.4.1", COLOR_NEON_MINT, 1);
 
         gfx.drawTextCentered(64, SCREEN_HEIGHT - 10, "ENTER: Reconnect STA", COLOR_TEXT_MUTED, 1);
     }

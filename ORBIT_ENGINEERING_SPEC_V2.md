@@ -247,7 +247,29 @@ REGISTER_APP(MyCustomApp);
 
 ### 6.3 Dynamic Carousel Navigation
 
-The `AppRegistry` maintains the active app list, manages memory, executes smooth horizontal card transitions, and routes button presses to the current active app. Holding `BTN_ENTER` for 0.5s cleanly transitions back to the previous screen or launcher; holding `BTN_ENTER` for 2.0s returns directly to the Home Dashboard from anywhere. Directional buttons `BTN_LEFT` and `BTN_RIGHT` navigate between apps in the carousel.
+The `AppRegistry` maintains the active app list, manages memory, executes smooth horizontal card transitions, and routes button presses to the current active app. Holding `BTN_ENTER` for 1.0s (`BUTTON_HOLD_1S`) cleanly transitions back to the previous screen or launcher; holding `BTN_ENTER` for 2.5s (`BUTTON_HOLD_2S`) returns directly to the Home Dashboard from anywhere. Directional buttons `BTN_LEFT` and `BTN_RIGHT` navigate between apps in the carousel.
+
+### 6.4 Display Viewport & Coordinate Standards (128x160 Portrait)
+
+All apps and render routines adhere to a unified UI coordinate grid to prevent shape overlapping and text truncation:
+- **Display Resolution**: 128 (W) × 160 (H) pixels.
+- **Top Status Bar**: `y = 0` to `y = 13` (`STATUS_BAR_HEIGHT = 14`), horizontal divider at `y = 13`.
+- **App Header (`drawHeader`)**:
+  - Icon: `x = 4`, `y = STATUS_BAR_HEIGHT + 3` (17..32)
+  - Title: `x = 24`, `y = STATUS_BAR_HEIGHT + 7` (21..28)
+  - Header Divider Line: `y = STATUS_BAR_HEIGHT + 23` (37)
+- **Primary Content Card (Card 1)**:
+  - Standard Placement: `x = 8`, `y = STATUS_BAR_HEIGHT + 26` (40), `width = 112`, `height = 42..48` (ends at `y = 82..88`).
+  - Leaves a clean 3px margin below the header divider line (`y = 37`).
+- **Secondary Content Card (Card 2)**:
+  - Standard Placement: `x = 8`, `y = STATUS_BAR_HEIGHT + 76` (90), `width = 112`, `height = 42..46` (ends at `y = 132..136`).
+  - Leaves a clean 4px gap below Card 1.
+- **Bottom Navigation Footer**:
+  - Standard Placement: `y = SCREEN_HEIGHT - 10` (150), font size 1 (occupies `y = 150..157`), centered at `x = 64`.
+  - Max text length at size 1: **21 characters** (126px width, centered with 1px padding on display edges).
+- **Dial / Circular Gauges**:
+  - Gauges with centers at `y = 58..62` must constrain radii to `r <= 21` pixels so circumference arcs never intersect the header divider line (`y = 37`).
+  - Needle meters (e.g. VU ballistics) must draw upper sweep arcs only rather than 360° full circles to prevent crossing bottom footer text.
 
 ---
 

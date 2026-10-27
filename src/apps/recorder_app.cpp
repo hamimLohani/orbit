@@ -28,48 +28,48 @@ void RecorderApp::onRender(RenderEngine& gfx) {
 
     bool recording = MicSensor::getInstance().isRecording();
 
-    // Central Card
-    gfx.drawCard(8, STATUS_BAR_HEIGHT + 30, 112, 58, COLOR_SLATE_MID, recording ? COLOR_NEON_RED : COLOR_SLATE_BORDER);
+    // Central Card (starts at y=40, height 56 -> ends at y=96)
+    gfx.drawCard(8, STATUS_BAR_HEIGHT + 26, 112, 56, COLOR_SLATE_MID, recording ? COLOR_NEON_RED : COLOR_SLATE_BORDER);
 
     if (recording) {
         uint32_t durMs = MicSensor::getInstance().getRecordingDurationMs();
         uint32_t sec = durMs / 1000;
 
-        gfx.fillCircle(20, STATUS_BAR_HEIGHT + 44, 4, COLOR_NEON_RED);
-        gfx.drawText(30, STATUS_BAR_HEIGHT + 41, "RECORDING", COLOR_NEON_RED, 1);
+        gfx.fillCircle(20, STATUS_BAR_HEIGHT + 37, 4, COLOR_NEON_RED);
+        gfx.drawText(30, STATUS_BAR_HEIGHT + 34, "RECORDING", COLOR_NEON_RED, 1);
 
         char timeBuf[16];
         snprintf(timeBuf, sizeof(timeBuf), "%02lu:%02lu.%lu", sec / 60, sec % 60, (durMs % 1000) / 100);
-        gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 58, timeBuf, COLOR_TEXT_LIGHT, 2);
+        gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 49, timeBuf, COLOR_TEXT_LIGHT, 2);
 
         // Live mic level indicator inside card
         TelemetryData telem = SharedData::getInstance().getData();
         uint8_t lvl = constrain((uint8_t)map((int)telem.micDb, 35, 90, 0, 100), 0, 100);
-        gfx.drawProgressBar(16, STATUS_BAR_HEIGHT + 78, 96, 4, lvl, COLOR_NEON_MINT);
+        gfx.drawProgressBar(16, STATUS_BAR_HEIGHT + 71, 96, 4, lvl, COLOR_NEON_MINT);
     } else {
-        gfx.drawIcon(20, STATUS_BAR_HEIGHT + 36, 5, COLOR_NEON_CYAN, COLOR_SLATE_MID);
-        gfx.drawText(42, STATUS_BAR_HEIGHT + 40, "READY", COLOR_TEXT_LIGHT, 1);
+        gfx.drawIcon(20, STATUS_BAR_HEIGHT + 33, 5, COLOR_NEON_CYAN, COLOR_SLATE_MID);
+        gfx.drawText(42, STATUS_BAR_HEIGHT + 37, "READY", COLOR_TEXT_LIGHT, 1);
 
         char countBuf[24];
         snprintf(countBuf, sizeof(countBuf), "%lu Memos Saved", (unsigned long)_memoCount);
-        gfx.drawText(16, STATUS_BAR_HEIGHT + 64, countBuf, COLOR_TEXT_MUTED, 1);
+        gfx.drawText(16, STATUS_BAR_HEIGHT + 61, countBuf, COLOR_TEXT_MUTED, 1);
     }
 
-    // Storage card
+    // Storage card (starts at y=96, height 26 -> ends at y=122)
     uint32_t totalMb = 0, usedMb = 0;
     BitmapLoader::getInstance().getStorageStats(totalMb, usedMb);
     char sdBuf[32];
     if (totalMb > 0) {
-        snprintf(sdBuf, sizeof(sdBuf), "SD: %lu MB / %lu MB", (unsigned long)usedMb, (unsigned long)totalMb);
+        snprintf(sdBuf, sizeof(sdBuf), "SD: %luMB / %luMB", (unsigned long)usedMb, (unsigned long)totalMb);
     } else {
-        snprintf(sdBuf, sizeof(sdBuf), "SD: OK (Shared SPI)");
+        snprintf(sdBuf, sizeof(sdBuf), "SD: Active (SPI)");
     }
-    gfx.drawCard(8, STATUS_BAR_HEIGHT + 94, 112, 24, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
-    gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 101, sdBuf, COLOR_TEXT_MUTED, 1);
+    gfx.drawCard(8, STATUS_BAR_HEIGHT + 82, 112, 26, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
+    gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 91, sdBuf, COLOR_TEXT_MUTED, 1);
 
     // Controls hint
     const char* hint = recording ? "ENTER: Stop Record" : "ENTER: Start Record";
-    gfx.drawTextCentered(64, SCREEN_HEIGHT - 12, hint, recording ? COLOR_NEON_RED : COLOR_TEXT_MUTED, 1);
+    gfx.drawTextCentered(64, SCREEN_HEIGHT - 10, hint, recording ? COLOR_NEON_RED : COLOR_TEXT_MUTED, 1);
 }
 
 bool RecorderApp::onButtonEvent(const ButtonEvent& evt) {

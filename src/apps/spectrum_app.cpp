@@ -45,7 +45,7 @@ void SpectrumApp::onRender(RenderEngine& gfx) {
     }
 
     // Bottom Mode Switcher Hint
-    gfx.drawTextCentered(64, SCREEN_HEIGHT - 12, "SELECT: Switch Mode", COLOR_TEXT_MUTED, 1);
+    gfx.drawTextCentered(64, SCREEN_HEIGHT - 10, "ENTER: Switch Mode", COLOR_TEXT_MUTED, 1);
 }
 
 void SpectrumApp::renderBars(RenderEngine& gfx) {
@@ -97,9 +97,15 @@ void SpectrumApp::renderVuMeter(RenderEngine& gfx) {
     int16_t cy = STATUS_BAR_HEIGHT + 85;
     int16_t radius = 55;
 
-    // Outer Dial Arc
-    gfx.drawCircle(cx, cy, radius, COLOR_SLATE_BORDER);
-    gfx.drawCircle(cx, cy, radius - 1, COLOR_SLATE_MID);
+    // Outer Dial Arc (upper meter sweep only, never drawing down into footer)
+    for (float a = -0.85f; a <= 0.85f; a += 0.04f) {
+        int16_t ax0 = cx + (int16_t)(radius * sin(a));
+        int16_t ay0 = cy - (int16_t)(radius * cos(a));
+        gfx.drawPixel(ax0, ay0, COLOR_SLATE_BORDER);
+        int16_t ax1 = cx + (int16_t)((radius - 1) * sin(a));
+        int16_t ay1 = cy - (int16_t)((radius - 1) * cos(a));
+        gfx.drawPixel(ax1, ay1, COLOR_SLATE_MID);
+    }
 
     // Color arcs: Green (safe), Amber (loud), Red (clip)
     // Ticks

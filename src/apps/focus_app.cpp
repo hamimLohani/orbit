@@ -73,8 +73,8 @@ void FocusApp::onRender(RenderEngine& gfx) {
     gfx.drawHeader("FOCUS FLOW", 4);
 
     int16_t cx = 64;
-    int16_t cy = STATUS_BAR_HEIGHT + 48;
-    int16_t radius = 34;
+    int16_t cy = STATUS_BAR_HEIGHT + 45; // y = 59
+    int16_t radius = 20; // spans y=39..79, cleanly below header line at y=37
 
     // Progress Arc Calculation
     float progress = (_totalSeconds > 0) ? (1.0f - (float)_remainingSeconds / _totalSeconds) : 0.0f;
@@ -85,11 +85,11 @@ void FocusApp::onRender(RenderEngine& gfx) {
 
     // Progress arc dots
     float maxAngle = progress * 6.283f - 1.57f;
-    for (float a = -1.57f; a <= maxAngle; a += 0.2f) {
+    for (float a = -1.57f; a <= maxAngle; a += 0.25f) {
         int16_t px = cx + (int16_t)((radius - 2) * cos(a));
         int16_t py = cy + (int16_t)((radius - 2) * sin(a));
         uint16_t arcColor = (_state == POMO_BREAK) ? COLOR_NEON_MINT : COLOR_NEON_PURPLE;
-        gfx.fillCircle(px, py, 2, arcColor);
+        gfx.fillCircle(px, py, 1, arcColor);
     }
 
     // Time text inside ring
@@ -112,22 +112,22 @@ void FocusApp::onRender(RenderEngine& gfx) {
         stateText = "PAUSED";
         stateColor = COLOR_NEON_AMBER;
     }
-    gfx.drawTextCentered(cx, cy + 14, stateText, stateColor, 1);
+    gfx.drawTextCentered(cx, cy + 12, stateText, stateColor, 1);
 
-    // Noise Sentinel Status Banner
+    // Noise Sentinel Status Banner (starts at y=88, height 26 -> ends at 114)
     if (_distractionAlert) {
-        gfx.drawCard(8, STATUS_BAR_HEIGHT + 92, 112, 26, COLOR_SLATE_MID, COLOR_NEON_RED);
-        gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 100, "! NOISY ROOM !", COLOR_NEON_RED, 1);
+        gfx.drawCard(8, STATUS_BAR_HEIGHT + 74, 112, 26, COLOR_SLATE_MID, COLOR_NEON_RED);
+        gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 83, "! NOISY ROOM !", COLOR_NEON_RED, 1);
     } else {
-        gfx.drawCard(8, STATUS_BAR_HEIGHT + 92, 112, 26, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
+        gfx.drawCard(8, STATUS_BAR_HEIGHT + 74, 112, 26, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
         TelemetryData telem = SharedData::getInstance().getData();
-        char sentinelBuf[32];
-        snprintf(sentinelBuf, sizeof(sentinelBuf), "Noise Sentinel: %.0f dB", telem.micDb);
-        gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 100, sentinelBuf, COLOR_TEXT_MUTED, 1);
+        char sentinelBuf[24];
+        snprintf(sentinelBuf, sizeof(sentinelBuf), "Sentinel: %.0f dB", telem.micDb);
+        gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 83, sentinelBuf, COLOR_TEXT_MUTED, 1);
     }
 
     // Controls hint
-    gfx.drawTextCentered(64, SCREEN_HEIGHT - 12, "ENTER: Play/Pause", COLOR_TEXT_MUTED, 1);
+    gfx.drawTextCentered(64, SCREEN_HEIGHT - 10, "ENTER: Play/Pause", COLOR_TEXT_MUTED, 1);
 }
 
 bool FocusApp::onButtonEvent(const ButtonEvent& evt) {

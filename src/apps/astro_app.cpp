@@ -28,14 +28,14 @@ void AstroApp::onRender(RenderEngine& gfx) {
     gfx.fillRect(0, STATUS_BAR_HEIGHT, SCREEN_WIDTH, CONTENT_HEIGHT, COLOR_VOID_DARK);
     gfx.drawHeader("ASTRO DASHBOARD", 6);
 
-    int16_t cx = 40;
-    int16_t cy = STATUS_BAR_HEIGHT + 48;
-    int16_t radius = 22;
+    int16_t cx = 36;
+    int16_t cy = STATUS_BAR_HEIGHT + 45; // y = 59
+    int16_t radius = 18; // Spans y=39..79 with glow, cleanly below header line at y=37
 
     // Draw Lunar Graphic
     renderMoon(gfx, cx, cy, radius, telem.moonPhase);
 
-    // Lunar Phase Details Card (Right)
+    // Lunar Phase Details Card (Right: starts at x=64, y=40, width=56, height=40)
     const char* phaseName = "New Moon";
     float p = telem.moonPhase;
     int illum = (int)(fabs(p - 0.0f) <= 0.5f ? (p * 200.0f) : ((1.0f - p) * 200.0f));
@@ -49,26 +49,26 @@ void AstroApp::onRender(RenderEngine& gfx) {
     else if (p < 0.77f) phaseName = "Last Quarter";
     else phaseName = "Waning Crescent";
 
-    gfx.drawCard(70, STATUS_BAR_HEIGHT + 30, 50, 42, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
-    gfx.drawText(74, STATUS_BAR_HEIGHT + 35, "LUNAR", COLOR_TEXT_MUTED, 1);
+    gfx.drawCard(64, STATUS_BAR_HEIGHT + 26, 56, 40, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
+    gfx.drawText(70, STATUS_BAR_HEIGHT + 31, "LUNAR", COLOR_TEXT_MUTED, 1);
     char illumBuf[16];
     snprintf(illumBuf, sizeof(illumBuf), "%d%%", illum);
-    gfx.drawText(74, STATUS_BAR_HEIGHT + 47, illumBuf, COLOR_TEXT_LIGHT, 2);
+    gfx.drawText(70, STATUS_BAR_HEIGHT + 43, illumBuf, COLOR_TEXT_LIGHT, 2);
 
     // Phase Name beneath
-    gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 78, phaseName, COLOR_NEON_CYAN, 1);
+    gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 71, phaseName, COLOR_NEON_CYAN, 1);
 
-    // ISS Live Space Station Pass Card
-    gfx.drawCard(8, STATUS_BAR_HEIGHT + 90, 112, 34, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
-    gfx.drawText(14, STATUS_BAR_HEIGHT + 94, "ISS NEXT PASS", COLOR_TEXT_MUTED, 1);
+    // ISS Live Space Station Pass Card (starts at y=96, height 36 -> ends at y=132)
+    gfx.drawCard(8, STATUS_BAR_HEIGHT + 82, 112, 36, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
+    gfx.drawText(14, STATUS_BAR_HEIGHT + 87, "ISS NEXT PASS", COLOR_TEXT_MUTED, 1);
 
     uint32_t issMins = _issPassSeconds / 60;
     uint32_t issSecs = _issPassSeconds % 60;
-    char issBuf[32];
-    snprintf(issBuf, sizeof(issBuf), "in %02lu:%02lu (Alt: 420km)", issMins, issSecs);
-    gfx.drawText(14, STATUS_BAR_HEIGHT + 106, issBuf, COLOR_NEON_MINT, 1);
+    char issBuf[24];
+    snprintf(issBuf, sizeof(issBuf), "Pass in %02lum %02lus", issMins, issSecs);
+    gfx.drawText(14, STATUS_BAR_HEIGHT + 99, issBuf, COLOR_NEON_MINT, 1);
 
-    gfx.drawTextCentered(64, SCREEN_HEIGHT - 12, "ORBIT ASTRAL HUD", COLOR_TEXT_MUTED, 1);
+    gfx.drawTextCentered(64, SCREEN_HEIGHT - 10, "ORBIT ASTRAL HUD", COLOR_TEXT_MUTED, 1);
 }
 
 void AstroApp::renderMoon(RenderEngine& gfx, int16_t cx, int16_t cy, int16_t radius, float phase) {

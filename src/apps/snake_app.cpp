@@ -560,37 +560,38 @@ void SnakeApp::renderSnake(RenderEngine& gfx) {
 void SnakeApp::renderMenu(RenderEngine& gfx) {
     gfx.drawHeader("SNAKE RETRO", 12);
 
-    // Main Settings Card
-    gfx.drawCard(8, STATUS_BAR_HEIGHT + 22, 112, 86, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
+    // Main Settings Card - starts at STATUS_BAR_HEIGHT + 26 (y=40), cleanly below header line (y=37)
+    gfx.drawCard(8, STATUS_BAR_HEIGHT + 26, 112, 74, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
 
     // Row 0: Mode
-    const char* modeNames[] = { "Classic", "Time Attack", "Survival", "Zen" };
+    const char* modeNames[] = { "Classic", "TimeAtk", "Survive", "Zen" };
     uint16_t c0 = (_menuRow == 0) ? COLOR_NEON_CYAN : COLOR_TEXT_LIGHT;
-    gfx.drawText(14, STATUS_BAR_HEIGHT + 28, (_menuRow == 0 ? "> Mode:" : "  Mode:"), c0, 1);
-    gfx.drawTextRight(112, STATUS_BAR_HEIGHT + 28, modeNames[_selectedMode], (_menuRow == 0 ? COLOR_NEON_MINT : COLOR_TEXT_MUTED), 1);
+    gfx.drawText(14, STATUS_BAR_HEIGHT + 31, (_menuRow == 0 ? "> Mode:" : "  Mode:"), c0, 1);
+    gfx.drawTextRight(112, STATUS_BAR_HEIGHT + 31, modeNames[_selectedMode], (_menuRow == 0 ? COLOR_NEON_MINT : COLOR_TEXT_MUTED), 1);
 
     // Row 1: Obstacles
     uint16_t c1 = (_menuRow == 1) ? COLOR_NEON_CYAN : COLOR_TEXT_LIGHT;
-    gfx.drawText(14, STATUS_BAR_HEIGHT + 42, (_menuRow == 1 ? "> Mazes:" : "  Mazes:"), c1, 1);
-    gfx.drawTextRight(112, STATUS_BAR_HEIGHT + 42, (_obstaclesEnabled ? "ON" : "OFF"), (_obstaclesEnabled ? COLOR_NEON_AMBER : COLOR_TEXT_MUTED), 1);
+    gfx.drawText(14, STATUS_BAR_HEIGHT + 44, (_menuRow == 1 ? "> Mazes:" : "  Mazes:"), c1, 1);
+    gfx.drawTextRight(112, STATUS_BAR_HEIGHT + 44, (_obstaclesEnabled ? "ON" : "OFF"), (_obstaclesEnabled ? COLOR_NEON_AMBER : COLOR_TEXT_MUTED), 1);
 
     // Row 2: Difficulty
     const char* diffNames[] = { "Easy", "Normal", "Hard" };
     uint16_t c2 = (_menuRow == 2) ? COLOR_NEON_CYAN : COLOR_TEXT_LIGHT;
-    gfx.drawText(14, STATUS_BAR_HEIGHT + 56, (_menuRow == 2 ? "> Speed:" : "  Speed:"), c2, 1);
-    gfx.drawTextRight(112, STATUS_BAR_HEIGHT + 56, diffNames[_difficulty], (_menuRow == 2 ? COLOR_NEON_CYAN : COLOR_TEXT_MUTED), 1);
+    gfx.drawText(14, STATUS_BAR_HEIGHT + 57, (_menuRow == 2 ? "> Speed:" : "  Speed:"), c2, 1);
+    gfx.drawTextRight(112, STATUS_BAR_HEIGHT + 57, diffNames[_difficulty], (_menuRow == 2 ? COLOR_NEON_CYAN : COLOR_TEXT_MUTED), 1);
 
     // Row 3: Start Button Action
     uint16_t c3 = (_menuRow == 3) ? COLOR_NEON_MINT : COLOR_TEXT_MUTED;
-    gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 72, (_menuRow == 3 ? "[ START GAME ]" : "START GAME"), c3, 1);
+    gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 73, (_menuRow == 3 ? "[ START GAME ]" : "START GAME"), c3, 1);
 
-    // High Score Box at Bottom
-    gfx.drawCard(8, STATUS_BAR_HEIGHT + 112, 112, 28, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
+    // High Score Box - cleanly separated at y = 118, height 22 -> ends at 140
+    gfx.drawCard(8, STATUS_BAR_HEIGHT + 104, 112, 22, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
     char hiBuf[24];
     snprintf(hiBuf, sizeof(hiBuf), "RECORD: %d PTS", _highScore);
-    gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 120, hiBuf, COLOR_NEON_AMBER, 1);
+    gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 111, hiBuf, COLOR_NEON_AMBER, 1);
 
-    gfx.drawTextCentered(64, SCREEN_HEIGHT - 6, "UP/DN:Nav  L/R:Toggle  OK:Go", COLOR_TEXT_MUTED, 1);
+    // Bottom Navigation Hint - 21 characters (126px), fits screen width 128px at y=150
+    gfx.drawTextCentered(64, SCREEN_HEIGHT - 10, "U/D:Nav L/R:Set OK:Go", COLOR_TEXT_MUTED, 1);
 }
 
 void SnakeApp::renderPaused(RenderEngine& gfx) {

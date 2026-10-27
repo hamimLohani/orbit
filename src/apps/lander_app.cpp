@@ -98,12 +98,12 @@ void LanderApp::onRender(RenderEngine& gfx) {
         // Crash explosion
         gfx.drawCircle(lx, ly, 8, COLOR_NEON_RED);
         gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 50, "CRASHED!", COLOR_NEON_RED, 2);
-        gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 75, "SELECT to retry", COLOR_WHITE, 1);
+        gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 75, "ENTER: Retry", COLOR_WHITE, 1);
     } else if (_landed) {
         // Successful landing
         gfx.drawCircle(lx, ly, 6, COLOR_NEON_MINT);
         gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 50, "LANDED!", COLOR_NEON_MINT, 2);
-        gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 75, "SELECT for next", COLOR_WHITE, 1);
+        gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 75, "ENTER: Next Level", COLOR_WHITE, 1);
     } else {
         // Lander body (Triangle / Pod)
         gfx.drawCircle(lx, ly, 5, COLOR_TEXT_LIGHT);
@@ -117,7 +117,7 @@ void LanderApp::onRender(RenderEngine& gfx) {
         }
     }
 
-    gfx.drawTextCentered(64, SCREEN_HEIGHT - 10, "UP:Thrust | L/R:Steer", COLOR_TEXT_MUTED, 1);
+    gfx.drawTextCentered(64, SCREEN_HEIGHT - 10, "UP:Thrust  L/R:Steer", COLOR_TEXT_MUTED, 1);
 }
 
 bool LanderApp::onButtonEvent(const ButtonEvent& evt) {

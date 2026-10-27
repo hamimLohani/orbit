@@ -25,14 +25,14 @@ void TemplateApp::onRender(RenderEngine& gfx) {
     gfx.fillRect(0, STATUS_BAR_HEIGHT, SCREEN_WIDTH, CONTENT_HEIGHT, COLOR_VOID_DARK);
     gfx.drawHeader("TEMPLATE APP", 11);
 
-    gfx.drawCard(10, STATUS_BAR_HEIGHT + 35, 108, 60, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
-    gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 45, "Value Counter", COLOR_TEXT_MUTED, 1);
+    gfx.drawCard(8, STATUS_BAR_HEIGHT + 26, 112, 64, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
+    gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 38, "Value Counter", COLOR_TEXT_MUTED, 1);
 
     char valBuf[16];
     snprintf(valBuf, sizeof(valBuf), "%d", _counter);
-    gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 65, valBuf, COLOR_NEON_CYAN, 2);
+    gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 58, valBuf, COLOR_NEON_CYAN, 2);
 
-    gfx.drawTextCentered(64, SCREEN_HEIGHT - 12, "UP / DOWN: Adjust", COLOR_TEXT_MUTED, 1);
+    gfx.drawTextCentered(64, SCREEN_HEIGHT - 10, "UP / DOWN: Adjust", COLOR_TEXT_MUTED, 1);
 }
 
 bool TemplateApp::onButtonEvent(const ButtonEvent& evt) {

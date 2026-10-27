@@ -29,28 +29,28 @@ void HomeApp::onRender(RenderEngine& gfx) {
 
     // 1. Center Core Coordinates
     int16_t cx = 64;
-    int16_t cy = STATUS_BAR_HEIGHT + 33; // y = 47
+    int16_t cy = STATUS_BAR_HEIGHT + 30; // y = 44
 
-    // Outer Orbit Ring
-    gfx.drawCircle(cx, cy, 26, COLOR_SLATE_BORDER);
-    gfx.drawCircle(cx, cy, 18, COLOR_SLATE_MID);
+    // Outer Orbit Ring (radius 24, satellites span y=17..71)
+    gfx.drawCircle(cx, cy, 24, COLOR_SLATE_BORDER);
+    gfx.drawCircle(cx, cy, 17, COLOR_SLATE_MID);
 
     // Orbiting Satellites
-    int16_t sat1X = cx + (int16_t)(26 * cos(_orbitAngle1));
-    int16_t sat1Y = cy + (int16_t)(26 * sin(_orbitAngle1));
+    int16_t sat1X = cx + (int16_t)(24 * cos(_orbitAngle1));
+    int16_t sat1Y = cy + (int16_t)(24 * sin(_orbitAngle1));
     gfx.fillCircle(sat1X, sat1Y, 3, COLOR_NEON_CYAN);
 
-    int16_t sat2X = cx + (int16_t)(18 * cos(_orbitAngle2));
-    int16_t sat2Y = cy + (int16_t)(18 * sin(_orbitAngle2));
+    int16_t sat2X = cx + (int16_t)(17 * cos(_orbitAngle2));
+    int16_t sat2Y = cy + (int16_t)(17 * sin(_orbitAngle2));
     gfx.fillCircle(sat2X, sat2Y, 2, COLOR_NEON_PURPLE);
 
-    int16_t sat3X = cx + (int16_t)(26 * cos(_orbitAngle3));
-    int16_t sat3Y = cy + (int16_t)(26 * sin(_orbitAngle3));
+    int16_t sat3X = cx + (int16_t)(24 * cos(_orbitAngle3));
+    int16_t sat3Y = cy + (int16_t)(24 * sin(_orbitAngle3));
     gfx.fillCircle(sat3X, sat3Y, 2, COLOR_NEON_MINT);
 
     // Central Core Pulse
-    gfx.fillCircle(cx, cy, 10, COLOR_SLATE_DARK);
-    gfx.drawCircle(cx, cy, 10, COLOR_NEON_CYAN);
+    gfx.fillCircle(cx, cy, 9, COLOR_SLATE_DARK);
+    gfx.drawCircle(cx, cy, 9, COLOR_NEON_CYAN);
 
     // Mood Avatar in Core Center
     if (telem.micDb > 70.0f) {
@@ -69,33 +69,33 @@ void HomeApp::onRender(RenderEngine& gfx) {
         strncpy(shortTime, telem.timeStr, 5);
         shortTime[5] = '\0';
     }
-    // Live Digital Time (Size 2)
-    gfx.drawTextCentered(cx, cy + 30, shortTime, COLOR_TEXT_LIGHT, 2);
+    // Live Digital Time (Size 2, y=75..89)
+    gfx.drawTextCentered(cx, STATUS_BAR_HEIGHT + 61, shortTime, COLOR_TEXT_LIGHT, 2);
 
-    // Live Calendar Date (Size 1)
+    // Live Calendar Date (Size 1, y=93..101)
     uint16_t dateColor = telem.timeSynced ? COLOR_NEON_CYAN : COLOR_TEXT_MUTED;
-    gfx.drawTextCentered(cx, cy + 48, telem.dateStr, dateColor, 1);
+    gfx.drawTextCentered(cx, STATUS_BAR_HEIGHT + 79, telem.dateStr, dateColor, 1);
 
-    // 3. Climate Telemetry Cards (Left & Right)
+    // 3. Climate Telemetry Cards (Left & Right, starts at y=106, height 28 -> ends at y=134)
     // Left: Temp
     char tempBuf[12];
     snprintf(tempBuf, sizeof(tempBuf), "%.1f C", telem.temperature);
-    gfx.drawCard(8, STATUS_BAR_HEIGHT + 92, 53, 27, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
+    gfx.drawCard(8, STATUS_BAR_HEIGHT + 92, 53, 28, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
     gfx.drawText(12, STATUS_BAR_HEIGHT + 96, "TEMP", COLOR_TEXT_MUTED, 1);
-    gfx.drawText(12, STATUS_BAR_HEIGHT + 107, tempBuf, COLOR_NEON_CYAN, 1);
+    gfx.drawText(12, STATUS_BAR_HEIGHT + 108, tempBuf, COLOR_NEON_CYAN, 1);
 
     // Right: Humidity
     char humBuf[12];
     snprintf(humBuf, sizeof(humBuf), "%.0f%%", telem.humidity);
-    gfx.drawCard(67, STATUS_BAR_HEIGHT + 92, 53, 27, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
+    gfx.drawCard(67, STATUS_BAR_HEIGHT + 92, 53, 28, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
     gfx.drawText(71, STATUS_BAR_HEIGHT + 96, "HUM", COLOR_TEXT_MUTED, 1);
-    gfx.drawText(71, STATUS_BAR_HEIGHT + 107, humBuf, COLOR_NEON_MINT, 1);
+    gfx.drawText(71, STATUS_BAR_HEIGHT + 108, humBuf, COLOR_NEON_MINT, 1);
 
-    // 4. Ambient Noise Level Bar at Bottom
+    // 4. Ambient Noise Level Bar at Bottom (y=150)
     int16_t noisePercent = map((int)telem.micDb, 30, 90, 0, 100);
     noisePercent = constrain(noisePercent, 0, 100);
     uint16_t barColor = (noisePercent > 70) ? COLOR_NEON_RED : (noisePercent > 45 ? COLOR_NEON_AMBER : COLOR_NEON_CYAN);
-    gfx.drawProgressBar(8, SCREEN_HEIGHT - 11, SCREEN_WIDTH - 16, 5, noisePercent, barColor, COLOR_SLATE_DARK);
+    gfx.drawProgressBar(8, SCREEN_HEIGHT - 10, SCREEN_WIDTH - 16, 5, noisePercent, barColor, COLOR_SLATE_DARK);
 }
 
 bool HomeApp::onButtonEvent(const ButtonEvent& evt) {

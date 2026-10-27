@@ -17,9 +17,9 @@ void LightsApp::onRender(RenderEngine& gfx) {
     RgbLightingMode mode = RgbController::getInstance().getMode();
     uint8_t brightness = RgbController::getInstance().getBrightness();
 
-    // Mode Display Card
-    gfx.drawCard(8, STATUS_BAR_HEIGHT + 30, 112, 50, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
-    gfx.drawText(14, STATUS_BAR_HEIGHT + 36, "CURRENT MODE", COLOR_TEXT_MUTED, 1);
+    // Mode Display Card (starts at y=40, height 46 -> ends at y=86)
+    gfx.drawCard(8, STATUS_BAR_HEIGHT + 26, 112, 46, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
+    gfx.drawText(14, STATUS_BAR_HEIGHT + 31, "CURRENT MODE", COLOR_TEXT_MUTED, 1);
 
     const char* modeName = "AMBIENT";
     uint16_t modeColor = COLOR_NEON_CYAN;
@@ -34,19 +34,20 @@ void LightsApp::onRender(RenderEngine& gfx) {
         default: break;
     }
 
-    gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 54, modeName, modeColor, 1);
+    gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 49, modeName, modeColor, 1);
 
-    // Brightness Card
-    gfx.drawCard(8, STATUS_BAR_HEIGHT + 86, 112, 38, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
-    gfx.drawText(14, STATUS_BAR_HEIGHT + 92, "BRIGHTNESS", COLOR_TEXT_MUTED, 1);
+    // Brightness Card (starts at y=90, height 42 -> ends at y=132)
+    gfx.drawCard(8, STATUS_BAR_HEIGHT + 76, 112, 42, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
+    gfx.drawText(14, STATUS_BAR_HEIGHT + 81, "BRIGHTNESS", COLOR_TEXT_MUTED, 1);
 
     char bBuf[16];
     uint8_t pct = (brightness * 100) / 255;
     snprintf(bBuf, sizeof(bBuf), "%d%%", pct);
-    gfx.drawTextRight(112, STATUS_BAR_HEIGHT + 92, bBuf, COLOR_TEXT_LIGHT, 1);
-    gfx.drawProgressBar(14, STATUS_BAR_HEIGHT + 108, 100, 6, pct, COLOR_NEON_CYAN);
+    gfx.drawTextRight(112, STATUS_BAR_HEIGHT + 81, bBuf, COLOR_TEXT_LIGHT, 1);
+    gfx.drawProgressBar(14, STATUS_BAR_HEIGHT + 97, 100, 6, pct, COLOR_NEON_CYAN);
 
-    gfx.drawTextCentered(64, SCREEN_HEIGHT - 12, "ENTER: Mode | L/R: Dim", COLOR_TEXT_MUTED, 1);
+    // Bottom hint (19 chars = 114px, cleanly centered inside 128px screen)
+    gfx.drawTextCentered(64, SCREEN_HEIGHT - 10, "ENTER:Mode  L/R:Dim", COLOR_TEXT_MUTED, 1);
 }
 
 bool LightsApp::onButtonEvent(const ButtonEvent& evt) {

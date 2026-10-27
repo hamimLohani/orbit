@@ -77,13 +77,20 @@ void MyApp::onUpdate(uint32_t deltaMs) {
 }
 
 void MyApp::onRender(RenderEngine& gfx) {
-    // Draw on the 128x160 ST7735 screen
-    gfx.fillScreen(THEME_BG);
-    gfx.drawHeader("MY APP");
+    // Fill content area below status bar
+    gfx.fillRect(0, STATUS_BAR_HEIGHT, SCREEN_WIDTH, CONTENT_HEIGHT, COLOR_VOID_DARK);
+    gfx.drawHeader("MY APP", 3);
     
-    // Draw text, shapes, or icons
-    gfx.drawTextCentered(64, 70, String("Count: " + String(_counter)).c_str(), THEME_CYAN);
-    gfx.drawProgressBar(14, 110, 100, 8, _counter * 10, THEME_PURPLE);
+    // Primary card follows standard UI grid (starts at y=40, width=112)
+    gfx.drawCard(8, STATUS_BAR_HEIGHT + 26, 112, 64, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
+    gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 38, "Counter Value", COLOR_TEXT_MUTED, 1);
+    
+    char valBuf[16];
+    snprintf(valBuf, sizeof(valBuf), "%d", _counter);
+    gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 58, valBuf, COLOR_NEON_CYAN, 2);
+
+    // Standard footer hint at SCREEN_HEIGHT - 10 (y=150)
+    gfx.drawTextCentered(64, SCREEN_HEIGHT - 10, "UP / DOWN: Adjust", COLOR_TEXT_MUTED, 1);
 }
 
 bool MyApp::onButtonEvent(const ButtonEvent& evt) {

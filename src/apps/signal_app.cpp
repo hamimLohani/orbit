@@ -21,25 +21,26 @@ void SignalApp::onRender(RenderEngine& gfx) {
     gfx.fillRect(0, STATUS_BAR_HEIGHT, SCREEN_WIDTH, CONTENT_HEIGHT, COLOR_VOID_DARK);
     gfx.drawHeader("SIGNAL / ALERTS", 7);
 
-    // Alert Status Card
-    gfx.drawCard(8, STATUS_BAR_HEIGHT + 30, 112, 54, COLOR_SLATE_MID, _strobeActive ? COLOR_NEON_RED : COLOR_SLATE_BORDER);
+    // Alert Status Card (starts at y=40, height 48 -> ends at y=88)
+    gfx.drawCard(8, STATUS_BAR_HEIGHT + 26, 112, 48, COLOR_SLATE_MID, _strobeActive ? COLOR_NEON_RED : COLOR_SLATE_BORDER);
 
     if (_strobeActive) {
-        gfx.fillCircle(20, STATUS_BAR_HEIGHT + 45, 5, COLOR_NEON_RED);
-        gfx.drawText(32, STATUS_BAR_HEIGHT + 41, "BEACON ACTIVE", COLOR_NEON_RED, 1);
-        gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 60, "SOS Flashing...", COLOR_WHITE, 1);
+        gfx.fillCircle(20, STATUS_BAR_HEIGHT + 40, 4, COLOR_NEON_RED);
+        gfx.drawText(30, STATUS_BAR_HEIGHT + 36, "BEACON ACTIVE", COLOR_NEON_RED, 1);
+        gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 54, "SOS Flashing...", COLOR_WHITE, 1);
     } else {
-        gfx.drawIcon(16, STATUS_BAR_HEIGHT + 38, 7, COLOR_NEON_CYAN, COLOR_SLATE_MID);
-        gfx.drawText(38, STATUS_BAR_HEIGHT + 42, "SYSTEM READY", COLOR_TEXT_LIGHT, 1);
-        gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 62, "Listening for webhooks", COLOR_TEXT_MUTED, 1);
+        gfx.drawIcon(16, STATUS_BAR_HEIGHT + 33, 7, COLOR_NEON_CYAN, COLOR_SLATE_MID);
+        gfx.drawText(38, STATUS_BAR_HEIGHT + 37, "SYSTEM READY", COLOR_TEXT_LIGHT, 1);
+        gfx.drawTextCentered(64, STATUS_BAR_HEIGHT + 54, "Webhooks Active", COLOR_TEXT_MUTED, 1);
     }
 
-    // Ping / Test Card
-    gfx.drawCard(8, STATUS_BAR_HEIGHT + 90, 112, 34, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
-    gfx.drawText(14, STATUS_BAR_HEIGHT + 95, "TRIGGER BEACON", COLOR_TEXT_MUTED, 1);
-    gfx.drawText(14, STATUS_BAR_HEIGHT + 107, "Press ENTER", COLOR_NEON_AMBER, 1);
+    // Ping / Test Card (starts at y=94, height 36 -> ends at y=130)
+    gfx.drawCard(8, STATUS_BAR_HEIGHT + 80, 112, 36, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
+    gfx.drawText(14, STATUS_BAR_HEIGHT + 86, "TRIGGER BEACON", COLOR_TEXT_MUTED, 1);
+    gfx.drawText(14, STATUS_BAR_HEIGHT + 98, "Press ENTER", COLOR_NEON_AMBER, 1);
 
-    gfx.drawTextCentered(64, SCREEN_HEIGHT - 12, "ENTER: Toggle Beacon", COLOR_TEXT_MUTED, 1);
+    // Bottom hint (20 chars = 120px, fits cleanly within 128px screen)
+    gfx.drawTextCentered(64, SCREEN_HEIGHT - 10, "ENTER: Toggle Beacon", COLOR_TEXT_MUTED, 1);
 }
 
 bool SignalApp::onButtonEvent(const ButtonEvent& evt) {
