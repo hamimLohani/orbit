@@ -24,8 +24,8 @@ struct ToastMessage {
 struct AiAnswerOverlay {
     bool active = false;
     char title[24] = "AI ANSWER";
-    char question[48];
-    char answer[384];
+    char question[64];
+    char answer[512];
     int16_t scrollOffset = 0;
 };
 

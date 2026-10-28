@@ -2,6 +2,8 @@
 #include "src/core/settings_manager.h"
 #include "src/core/shared_data.h"
 #include "src/core/event_bus.h"
+#include "src/display/render_engine.h"
+#include "src/display/theme.h"
 #include <algorithm>
 
 void WifiManager::init() {
@@ -14,20 +16,26 @@ void WifiManager::startStation() {
 
     WiFi.setSleep(false); // Low latency for WebSocket & HTTP
 
-    if (ssid.length() > 0 && ssid != DEFAULT_WIFI_SSID) {
+    bool isDummySsid = (ssid.length() == 0 || ssid == "ORBIT_WiFi" || ssid == "YOUR_WIFI_SSID" || ssid == "YOUR_SSID");
+    bool isDummyPass = (pass == "SuperSecretPassword" || pass == "12345678");
+
+    if (!isDummySsid && !isDummyPass) {
         WiFi.mode(WIFI_STA);
         WiFi.begin(ssid.c_str(), pass.c_str());
         _connecting = true;
         _connectStartTime = millis();
         _apActive = false;
-        Serial.printf("[WiFi] Attempting connection to saved network: %s\n", ssid.c_str());
+        Serial.printf("[WiFi] Attempting connection to network: %s\n", ssid.c_str());
     } else {
-        // No custom WiFi configured, start AP mode for initial setup
+        // No custom WiFi configured or placeholder password, start AP mode for initial setup
         startApFallback();
     }
 }
 
 void WifiManager::startApFallback() {
+    // Stop any pending station association loops so the radio is fully available for SoftAP and scanning
+    WiFi.disconnect(false);
+
     WiFi.mode(WIFI_AP_STA);
     WiFi.softAP(DEFAULT_AP_SSID, DEFAULT_AP_PASS);
     _apActive = true;
@@ -45,9 +53,6 @@ void WifiManager::startApFallback() {
     SharedData::getInstance().setNetwork(false, -45, WiFi.softAPIP().toString().c_str());
     Serial.printf("[WiFi] SoftAP started: %s (Password: %s) IP: %s\n", 
                   DEFAULT_AP_SSID, DEFAULT_AP_PASS, WiFi.softAPIP().toString().c_str());
-
-    // Trigger initial scan so nearby networks are cached for user
-    startScan();
 }
 
 void WifiManager::connect(const String& ssid, const String& pass) {
@@ -68,6 +73,27 @@ void WifiManager::disconnect() {
     WiFi.disconnect(true);
     _connecting = false;
     startApFallback();
+}
+
+void WifiManager::forgetWifi() {
+    Serial.println("[WiFi] User requested to forget Wi-Fi credentials.");
+    // 1. Erase from NVS flash storage
+    SettingsManager::getInstance().setWifiSsid("");
+    SettingsManager::getInstance().setWifiPass("");
+
+    // 2. Erase from ESP32 WiFi STA stack
+    WiFi.disconnect(true, true /* eraseAP = true */);
+    _connecting = false;
+
+    // 3. Immediately switch to SoftAP setup hotspot
+    startApFallback();
+
+    // 4. Update SharedData & EventBus
+    SharedData::getInstance().setNetwork(false, -45, WiFi.softAPIP().toString().c_str());
+    EventBus::getInstance().publish(EVENT_WIFI_DISCONNECTED, nullptr);
+
+    // 5. Visual confirmation on physical screen
+    RenderEngine::getInstance().showToast("WI-FI FORGOTTEN", "Hotspot: ORBIT-Setup", COLOR_NEON_AMBER, 3500);
 }
 
 bool WifiManager::isConnected() const {
@@ -103,10 +129,26 @@ String WifiManager::getSsid() const {
 
 void WifiManager::startScan() {
     if (_scanning) return;
+
+    // Disconnect pending STA connection so ESP-IDF doesn't reject scan with ESP_ERR_WIFI_STATE
+    if (_connecting || WiFi.status() != WL_CONNECTED) {
+        WiFi.disconnect(false);
+        _connecting = false;
+    }
+
+    WiFi.mode(WIFI_AP_STA);
+    WiFi.enableSTA(true);
     WiFi.scanDelete();
-    int16_t res = WiFi.scanNetworks(true /* async */, false /* show hidden */);
+
+    // Standard 300ms channel dwell time ensures all 2.4 GHz routers and mobile hotspots are captured
+    int16_t res = WiFi.scanNetworks(true /* async */, false /* show hidden */, false /* passive */, 300 /* max_ms_per_chan */);
     if (res == WIFI_SCAN_RUNNING) {
         _scanning = true;
+        _scanStartTime = millis();
+        Serial.println("[WiFi] Async 2.4 GHz network scan initiated...");
+    } else {
+        Serial.printf("[WiFi] Scan start returned: %d\n", res);
+        _scanning = false;
     }
 }
 
@@ -150,7 +192,11 @@ void WifiManager::checkScanCompletion() {
         _scanning = false;
         Serial.printf("[WiFi] Scan complete. Found %d networks.\n", (int)_scannedNetworks.size());
     } else if (n == WIFI_SCAN_FAILED) {
-        _scanning = false;
+        // Only mark failed if scan has been running for at least 1500ms to avoid premature failure
+        if (millis() - _scanStartTime > 1500) {
+            _scanning = false;
+            Serial.println("[WiFi] Scan failed or interrupted.");
+        }
     }
 }
 

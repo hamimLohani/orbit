@@ -1,6 +1,8 @@
 #include "src/network/websocket_server.h"
+#include "src/network/wifi_manager.h"
 #include "src/core/shared_data.h"
 #include "src/core/app_registry.h"
+#include "src/input/button_manager.h"
 #include "src/lighting/rgb_controller.h"
 #include "src/lighting/indicator_led.h"
 #include "src/sensors/mic_sensor.h"
@@ -151,6 +153,29 @@ void WebSocketServer::handleMessage(AsyncWebSocketClient* client, void* arg, uin
             RenderEngine::getInstance().showTextOverlay(title, q, a);
         } else if (strcmp(cmd, "hide_ai_answer") == 0 || strcmp(cmd, "hide_voice_text") == 0) {
             RenderEngine::getInstance().hideAiAnswer();
+        } else if (strcmp(cmd, "button_press") == 0) {
+            const char* btnStr = doc["button"] | "enter";
+            const char* typeStr = doc["type"] | "click";
+            ButtonId btn = BTN_ID_ENTER;
+            if (strcmp(btnStr, "up") == 0) btn = BTN_ID_UP;
+            else if (strcmp(btnStr, "down") == 0) btn = BTN_ID_DOWN;
+            else if (strcmp(btnStr, "left") == 0) btn = BTN_ID_LEFT;
+            else if (strcmp(btnStr, "right") == 0) btn = BTN_ID_RIGHT;
+            else if (strcmp(btnStr, "enter") == 0 || strcmp(btnStr, "ok") == 0) btn = BTN_ID_ENTER;
+            else if (strcmp(btnStr, "back") == 0) btn = BTN_ID_ENTER;
+            else if (strcmp(btnStr, "home") == 0) btn = BTN_ID_ENTER;
+
+            ButtonEventType bType = BUTTON_CLICK;
+            if (strcmp(typeStr, "hold") == 0 || strcmp(btnStr, "back") == 0) {
+                bType = BUTTON_HOLD_1S;
+            } else if (strcmp(typeStr, "home") == 0 || strcmp(btnStr, "home") == 0) {
+                bType = BUTTON_HOLD_3S;
+            }
+
+            ButtonEvent evt = { btn, bType, 100 };
+            AppRegistry::getInstance().handleButtonEvent(evt);
+        } else if (strcmp(cmd, "forget_wifi") == 0) {
+            WifiManager::getInstance().forgetWifi();
         }
     }
 }

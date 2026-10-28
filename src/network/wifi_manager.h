@@ -39,6 +39,7 @@ public:
 
     void connect(const String& ssid, const String& pass);
     void disconnect();
+    void forgetWifi();
     void startApFallback();
 
     // Asynchronous Wi-Fi Scanning
@@ -58,6 +59,7 @@ private:
     bool _apActive = false;
     bool _connecting = false;
     bool _scanning = false;
+    uint32_t _scanStartTime = 0;
     uint32_t _lastCheckTime = 0;
     uint32_t _connectStartTime = 0;
     uint32_t _apGracePeriodEnd = 0;

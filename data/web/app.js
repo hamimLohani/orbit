@@ -52,15 +52,22 @@ class OrbitWebController {
   }
 
   init() {
+    this.setupFloatingToasts();
+    this.setupQuickActions();
     this.setupTabs();
+    this.setupMasterCockpit();
     this.setupWebSocket();
     this.setupAppLauncher();
+    this.setupDpadController();
     this.setupRgbControls();
+    this.setupVirtualAmbientRing();
     this.setupVoiceMemos();
     this.setupWebAudioStudio();
     this.setupCloudDatabaseStudio();
     this.setupWallpaperStudio();
+    this.setupWallpaperPresets();
     this.setupToastForm();
+    this.setupToastPresetsAndPreview();
     this.setupAskAi();
     this.setupWeatherStudio();
     this.setupPingButton();
@@ -144,6 +151,77 @@ class OrbitWebController {
       this.fetchCloudRecords();
     } catch (e) {
       // Offline / disconnected
+    }
+  }
+
+  // Floating Toast Notification System (Snackbar)
+  setupFloatingToasts() {
+    this.toastContainer = document.getElementById('toast-container');
+    if (!this.toastContainer) {
+      this.toastContainer = document.createElement('div');
+      this.toastContainer.id = 'toast-container';
+      this.toastContainer.className = 'toast-container';
+      document.body.appendChild(this.toastContainer);
+    }
+  }
+
+  showToastNotification(message, type = 'info', icon = 'ℹ️') {
+    if (!this.toastContainer) this.setupFloatingToasts();
+    const item = document.createElement('div');
+    item.className = `toast-item ${type}`;
+    item.innerHTML = `
+      <span class="toast-icon">${icon}</span>
+      <span class="toast-text">${message}</span>
+    `;
+    this.toastContainer.appendChild(item);
+
+    // Trigger animation
+    requestAnimationFrame(() => {
+      item.classList.add('show');
+    });
+
+    // Auto dismiss after 2.8s
+    setTimeout(() => {
+      item.classList.remove('show');
+      setTimeout(() => {
+        if (item.parentNode) item.parentNode.removeChild(item);
+      }, 350);
+    }, 2800);
+  }
+
+  // Header Quick Actions Bar
+  setupQuickActions() {
+    // 1. Quick Master RGB Toggle
+    const quickRgbBtn = document.getElementById('btn-quick-rgb');
+    const quickRgbIcon = document.getElementById('quick-rgb-icon');
+    let rgbActive = true;
+
+    if (quickRgbBtn) {
+      quickRgbBtn.addEventListener('click', () => {
+        rgbActive = !rgbActive;
+        const targetMode = rgbActive ? 1 : 0; // Mode 1 = Ambient Climate, Mode 0 = Off
+        this.send({ cmd: 'set_rgb_mode', mode: targetMode });
+        if (quickRgbIcon) quickRgbIcon.textContent = rgbActive ? '💡' : '💤';
+        this.showToastNotification(
+          rgbActive ? 'Ambient RGB Lighting Turned ON' : 'WS2812 Lighting Powered Off',
+          rgbActive ? 'success' : 'warning',
+          rgbActive ? '💡' : '🌙'
+        );
+      });
+    }
+
+    // 2. Quick Remote Controller Button
+    const quickRemoteBtn = document.getElementById('btn-quick-remote');
+    if (quickRemoteBtn) {
+      quickRemoteBtn.addEventListener('click', () => {
+        const appsTab = document.querySelector('.nav-tab[data-tab="apps"]');
+        if (appsTab) appsTab.click();
+        const remoteDeck = document.querySelector('.remote-controller-deck');
+        if (remoteDeck) {
+          remoteDeck.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        this.showToastNotification('Hardware Virtual Remote Active', 'info', '🎮');
+      });
     }
   }
 
@@ -255,10 +333,62 @@ class OrbitWebController {
     }
   }
 
+  // Real-time live speech streaming to hardware TFT display
+  sendLiveSpeechToDevice(title, subtitle, text) {
+    if (!text || text.trim().length === 0) return;
+    this.updateMirrorOverlay(title || 'LISTENING...', text.trim(), 0);
+    const now = Date.now();
+    if (!this._lastSpeechStreamTime || (now - this._lastSpeechStreamTime > 160)) {
+      this._lastSpeechStreamTime = now;
+      this.send({
+        cmd: 'show_voice_text',
+        title: title || 'LISTENING...',
+        subtitle: subtitle || 'VOICE INPUT',
+        text: text.trim()
+      });
+    } else {
+      clearTimeout(this._speechStreamTimer);
+      this._speechStreamTimer = setTimeout(() => {
+        this._lastSpeechStreamTime = Date.now();
+        this.send({
+          cmd: 'show_voice_text',
+          title: title || 'LISTENING...',
+          subtitle: subtitle || 'VOICE INPUT',
+          text: text.trim()
+        });
+      }, 180);
+    }
+  }
+
   // Handle Telemetry JSON
   handleTelemetry(data) {
     if (!data) return;
     this.latestTelemetry = data;
+
+    // Live Hardware Screen Mirror Updates
+    const mirrorApp = document.getElementById('mirror-app-tag');
+    const masterScreenStatus = document.getElementById('master-screen-status');
+    const mirrorBigTime = document.getElementById('mirror-big-time');
+    const mirrorClockMini = document.getElementById('mirror-clock-mini');
+    const mirrorSub = document.getElementById('mirror-sub-info');
+
+    if (data.app) {
+      const appName = data.app.toUpperCase();
+      if (mirrorApp) mirrorApp.textContent = `ORBIT: ${appName}`;
+      if (masterScreenStatus) masterScreenStatus.textContent = `${appName}`;
+      document.querySelectorAll('.fast-app-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.app === data.app.toLowerCase());
+      });
+    }
+
+    if (data.time) {
+      if (mirrorBigTime) mirrorBigTime.textContent = data.time;
+      if (mirrorClockMini) mirrorClockMini.textContent = data.time.substring(0, 5);
+    }
+
+    if (data.temp !== undefined && data.hum !== undefined) {
+      if (mirrorSub) mirrorSub.textContent = `${data.temp}°C • ${data.hum}% RH`;
+    }
 
     if (data.ip && data.ip !== '0.0.0.0') {
       const aiWifiDot = document.getElementById('ai-wifi-dot');
@@ -269,37 +399,168 @@ class OrbitWebController {
       }
     }
 
-    if (data.temp !== undefined) document.getElementById('val-temp').textContent = `${data.temp}°C`;
-    if (data.heat_idx !== undefined) document.getElementById('val-heat-index').textContent = `Heat Index: ${data.heat_idx}°C`;
-    if (data.hum !== undefined) document.getElementById('val-hum').textContent = `${data.hum}%`;
-    if (data.mic_db !== undefined) {
-      document.getElementById('val-mic').textContent = `${data.mic_db} dB`;
-      const stateEl = document.getElementById('val-noise-state');
-      stateEl.textContent = data.mic_db > 65 ? 'Status: High Noise!' : 'Status: Normal';
-      stateEl.style.color = data.mic_db > 65 ? 'var(--color-neon-red)' : 'var(--color-text-dark)';
+    // Temperature & Meter
+    if (data.temp !== undefined) {
+      const tempEl = document.getElementById('val-temp');
+      if (tempEl) tempEl.textContent = `${data.temp}°C`;
+
+      const tempFill = document.getElementById('meter-temp-fill');
+      if (tempFill) {
+        const pct = Math.max(0, Math.min(100, Math.round((data.temp / 45) * 100)));
+        tempFill.style.width = `${pct}%`;
+      }
+
+      const tempBadge = document.getElementById('badge-temp-status');
+      if (tempBadge) {
+        if (data.temp < 18) {
+          tempBadge.textContent = 'Cool';
+          tempBadge.className = 'metric-badge badge-cyan';
+        } else if (data.temp <= 24) {
+          tempBadge.textContent = 'Optimal';
+          tempBadge.className = 'metric-badge badge-mint';
+        } else if (data.temp <= 29) {
+          tempBadge.textContent = 'Warm';
+          tempBadge.className = 'metric-badge badge-purple';
+        } else {
+          tempBadge.textContent = 'High Heat';
+          tempBadge.className = 'metric-badge badge-cyan';
+        }
+      }
     }
 
+    if (data.heat_idx !== undefined) {
+      const hiEl = document.getElementById('val-heat-index');
+      if (hiEl) hiEl.textContent = `Heat Index: ${data.heat_idx}°C`;
+    }
+
+    // Humidity & Meter
+    if (data.hum !== undefined) {
+      const humEl = document.getElementById('val-hum');
+      if (humEl) humEl.textContent = `${data.hum}%`;
+
+      const humFill = document.getElementById('meter-hum-fill');
+      if (humFill) {
+        const pct = Math.max(0, Math.min(100, Math.round(data.hum)));
+        humFill.style.width = `${pct}%`;
+      }
+
+      const humBadge = document.getElementById('badge-hum-status');
+      if (humBadge) {
+        if (data.hum < 30) {
+          humBadge.textContent = 'Dry Air';
+        } else if (data.hum <= 60) {
+          humBadge.textContent = 'Comfortable';
+        } else {
+          humBadge.textContent = 'High Moisture';
+        }
+      }
+    }
+
+    // Ambient Noise & Meter
+    if (data.mic_db !== undefined) {
+      const micEl = document.getElementById('val-mic');
+      if (micEl) micEl.textContent = `${data.mic_db} dB`;
+
+      const micFill = document.getElementById('meter-mic-fill');
+      if (micFill) {
+        const pct = Math.max(5, Math.min(100, Math.round(((data.mic_db - 30) / 70) * 100)));
+        micFill.style.width = `${pct}%`;
+      }
+
+      const noiseBadge = document.getElementById('badge-noise-status');
+      const stateEl = document.getElementById('val-noise-state');
+      if (data.mic_db > 68) {
+        if (stateEl) {
+          stateEl.textContent = 'Sentinel: High Noise Spike!';
+          stateEl.style.color = 'var(--color-neon-red)';
+        }
+        if (noiseBadge) {
+          noiseBadge.textContent = 'Noisy';
+          noiseBadge.style.background = 'rgba(255, 51, 102, 0.2)';
+          noiseBadge.style.color = 'var(--color-neon-red)';
+        }
+      } else if (data.mic_db > 50) {
+        if (stateEl) {
+          stateEl.textContent = 'Sentinel: Moderate Ambient Voice';
+          stateEl.style.color = 'var(--color-neon-amber)';
+        }
+        if (noiseBadge) {
+          noiseBadge.textContent = 'Moderate';
+          noiseBadge.style.background = 'rgba(254, 160, 0, 0.15)';
+          noiseBadge.style.color = 'var(--color-neon-amber)';
+        }
+      } else {
+        if (stateEl) {
+          stateEl.textContent = 'Sentinel: Normal Quiet Focus';
+          stateEl.style.color = 'var(--color-text-dark)';
+        }
+        if (noiseBadge) {
+          noiseBadge.textContent = 'Quiet';
+          noiseBadge.style.background = 'rgba(184, 31, 223, 0.15)';
+          noiseBadge.style.color = 'var(--color-neon-purple)';
+        }
+      }
+    }
+
+    // Active App State & Device Screen Badge
     if (data.active_app) {
       this.activeApp = data.active_app;
-      document.getElementById('val-active-app').textContent = data.active_app;
+      const actEl = document.getElementById('val-active-app');
+      if (actEl) actEl.textContent = data.active_app;
+
+      const screenStatusBadge = document.getElementById('device-screen-status');
+      if (screenStatusBadge) {
+        screenStatusBadge.textContent = `Current Screen: ${data.active_app.toUpperCase()}`;
+      }
       this.highlightActiveAppCard(data.active_app);
     }
 
-    if (data.time) document.getElementById('val-time').textContent = data.time;
-    if (data.date) document.getElementById('val-date').textContent = data.date;
-    if (data.ip) document.getElementById('val-ip').textContent = data.ip;
-    if (data.wifi_rssi !== undefined) document.getElementById('val-rssi').textContent = `${data.wifi_rssi} dBm`;
-    if (data.heap !== undefined) document.getElementById('val-heap').textContent = `${Math.round(data.heap / 1024)} KB`;
+    // Time & Seconds Bar
+    if (data.time) {
+      const timeEl = document.getElementById('val-time');
+      if (timeEl) timeEl.textContent = data.time;
+
+      const secFill = document.getElementById('meter-sec-fill');
+      if (secFill) {
+        const parts = data.time.split(':');
+        if (parts.length >= 3) {
+          const sec = parseInt(parts[2], 10) || 0;
+          secFill.style.width = `${Math.round((sec / 60) * 100)}%`;
+        }
+      }
+    }
+
+    if (data.date) {
+      const dateEl = document.getElementById('val-date');
+      if (dateEl) dateEl.textContent = data.date;
+    }
+
+    if (data.ip) {
+      const ipEl = document.getElementById('val-ip');
+      if (ipEl) ipEl.textContent = data.ip;
+    }
+
+    if (data.wifi_rssi !== undefined) {
+      const rssiEl = document.getElementById('val-rssi');
+      if (rssiEl) rssiEl.textContent = `${data.wifi_rssi} dBm`;
+    }
+
+    if (data.heap !== undefined) {
+      const heapEl = document.getElementById('val-heap');
+      if (heapEl) heapEl.textContent = `${Math.round(data.heap / 1024)} KB`;
+    }
 
     if (data.uptime !== undefined) {
       const h = Math.floor(data.uptime / 3600);
       const m = Math.floor((data.uptime % 3600) / 60);
       const s = data.uptime % 60;
-      document.getElementById('val-uptime').textContent = `${h}h ${m}m ${s}s`;
+      const upEl = document.getElementById('val-uptime');
+      if (upEl) upEl.textContent = `${h}h ${m}m ${s}s`;
     }
 
     if (data.moon_phase !== undefined) {
-      document.getElementById('val-moon').textContent = `${Math.round(data.moon_phase * 100)}% Illum`;
+      const moonEl = document.getElementById('val-moon');
+      if (moonEl) moonEl.textContent = `${Math.round(data.moon_phase * 100)}% Illum`;
     }
 
     if (data.fft && Array.isArray(data.fft)) {
@@ -329,6 +590,7 @@ class OrbitWebController {
           btn.classList.remove('active');
         }
       });
+      this.updateVirtualRingMode(data.rgb_mode);
     }
 
     if (data.rgb_brightness !== undefined) {
@@ -427,6 +689,293 @@ class OrbitWebController {
         card.classList.remove('active');
       }
     });
+  }
+
+  // Interactive Virtual Hardware Remote Control D-Pad
+  setupDpadController() {
+    const dpadButtons = document.querySelectorAll('.dpad-btn, .remote-action-btn');
+    dpadButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const btnId = btn.dataset.btn;
+        if (!btnId) return;
+
+        let type = 'click';
+        if (btnId === 'back') type = 'hold';
+        else if (btnId === 'home') type = 'home';
+
+        this.send({
+          cmd: 'button_press',
+          button: btnId,
+          type: type
+        });
+
+        if ('vibrate' in navigator) {
+          try { navigator.vibrate(25); } catch (e) {}
+        }
+      });
+    });
+
+    const carouselBtn = document.getElementById('btn-dpad-carousel');
+    if (carouselBtn) {
+      carouselBtn.addEventListener('click', () => {
+        this.send({
+          cmd: 'button_press',
+          button: 'enter',
+          type: 'hold'
+        });
+      });
+    }
+
+    // Keyboard Navigation Shortcuts (Desktop)
+    window.addEventListener('keydown', (e) => {
+      const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+      if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select') return;
+
+      let btn = null;
+      let type = 'click';
+
+      if (e.key === 'ArrowUp') btn = 'up';
+      else if (e.key === 'ArrowDown') btn = 'down';
+      else if (e.key === 'ArrowLeft') btn = 'left';
+      else if (e.key === 'ArrowRight') btn = 'right';
+      else if (e.key === 'Enter') btn = 'enter';
+      else if (e.key === 'Backspace' || e.key === 'Escape') {
+        btn = 'back';
+        type = 'hold';
+      }
+
+      if (btn) {
+        e.preventDefault();
+        this.send({
+          cmd: 'button_press',
+          button: btn,
+          type: type
+        });
+
+        // Visual tactile bounce
+        const el = document.querySelector(`[data-btn="${btn}"]`);
+        if (el) {
+          el.style.transform = 'scale(0.92)';
+          setTimeout(() => { el.style.transform = ''; }, 120);
+        }
+      }
+    });
+  }
+
+  // Live Simulated Ambient Light Ring Visualizer & Presets
+  setupVirtualAmbientRing() {
+    // 1-Click Mood Theme Chips
+    const themeChips = document.querySelectorAll('.theme-chip');
+    themeChips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        const color = chip.dataset.color || '#00ffff';
+        const mode = parseInt(chip.dataset.mode || '5', 10);
+
+        this.send({ cmd: 'set_rgb_mode', mode: mode });
+        if (color) {
+          this.send({ cmd: 'set_rgb_color', color: color });
+          const colorInput = document.getElementById('rgb-color-input');
+          if (colorInput) colorInput.value = color;
+        }
+
+        this.showToastNotification(`Ambient Theme: ${chip.textContent.trim()}`, 'success', '🌈');
+      });
+    });
+
+    // Quick Brightness % Chips
+    const pctBtns = document.querySelectorAll('.btn-pct');
+    pctBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const pct = parseInt(btn.dataset.pct, 10);
+        const slider = document.getElementById('rgb-bright-slider');
+        const valEl = document.getElementById('rgb-bright-val');
+        if (slider) slider.value = pct;
+        if (valEl) valEl.textContent = `${pct}%`;
+        const raw = Math.round((pct * 255) / 100);
+        this.send({ cmd: 'set_rgb_brightness', brightness: raw });
+        this.showToastNotification(`RGB Brightness set to ${pct}%`, 'info', '💡');
+      });
+    });
+  }
+
+  updateVirtualRingMode(mode) {
+    const rings = document.querySelectorAll('.virtual-ambient-ring');
+    const titles = document.querySelectorAll('.ring-mode-title');
+    const subs = document.querySelectorAll('.ring-mode-sub');
+
+    const modeMap = {
+      0: { name: 'Powered Off', sub: 'WS2812 Sleep Mode', bg: '#111827', shadow: 'none' },
+      1: { name: 'Ambient Climate', sub: 'Temperature Gradient', bg: 'conic-gradient(from 0deg, #00f0ff, #2fe89f, #fea000, #ff3366, #00f0ff)', shadow: '0 0 35px rgba(0,240,255,0.45)' },
+      2: { name: 'Sound Disco', sub: 'FFT Beat Visualizer', bg: 'conic-gradient(from 0deg, #ff3366, #b81fdf, #00f0ff, #ff3366)', shadow: '0 0 35px rgba(184,31,223,0.5)' },
+      3: { name: 'Pulse Breathe', sub: 'Sinusoidal Breathing', bg: 'conic-gradient(from 0deg, #00f0ff, #0077b6, #00f0ff)', shadow: '0 0 35px rgba(0,240,255,0.4)' },
+      4: { name: 'Rainbow Cycle', sub: 'Fluid HSV Spectrum', bg: 'conic-gradient(from 0deg, red, yellow, lime, cyan, blue, magenta, red)', shadow: '0 0 35px rgba(0,240,255,0.45)' },
+      5: { name: 'Solid Custom', sub: 'Static Color Fill', bg: document.getElementById('rgb-color-input')?.value || '#00ffff', shadow: '0 0 35px rgba(0,240,255,0.5)' },
+      6: { name: 'Critical Alert', sub: 'Warning Red Flash', bg: '#ff3366', shadow: '0 0 40px rgba(255,51,102,0.6)' },
+      7: { name: 'Disco Alert', sub: 'Party Beat Strobe', bg: 'conic-gradient(from 0deg, #fea000, #ff3366, #00f0ff, #fea000)', shadow: '0 0 40px rgba(254,160,0,0.5)' },
+      8: { name: 'Warm Candle', sub: 'Campfire Flame Glow', bg: 'conic-gradient(from 0deg, #ff5e3a, #fea000, #ff5e3a)', shadow: '0 0 35px rgba(254,160,0,0.5)' },
+      9: { name: 'Aurora Lights', sub: 'Cyan & Mint Borealis', bg: 'conic-gradient(from 0deg, #00f0ff, #2fe89f, #00f0ff)', shadow: '0 0 35px rgba(47,232,159,0.5)' },
+      10: { name: 'Police Siren', sub: 'Dual Strobe Beacon', bg: 'conic-gradient(from 0deg, #ff3366 180deg, #1f8eff 360deg)', shadow: '0 0 40px rgba(255,51,102,0.5)' }
+    };
+
+    const info = modeMap[mode] || modeMap[1];
+    titles.forEach(t => { t.textContent = info.name; });
+    subs.forEach(s => { s.textContent = info.sub; });
+    rings.forEach(r => {
+      r.style.background = info.bg;
+      r.style.boxShadow = info.shadow;
+    });
+  }
+
+  // Unified Master Control Cockpit setup
+  setupMasterCockpit() {
+    // 1. Fast App Switcher Buttons
+    document.querySelectorAll('.fast-app-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const appId = btn.dataset.app;
+        if (!appId) return;
+        this.send({ cmd: 'switch_app', app: appId });
+        this.highlightActiveAppCard(appId);
+        document.querySelectorAll('.fast-app-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.showToastNotification(`Switched screen to ${btn.textContent.trim()}`, 'info', '📱');
+      });
+    });
+
+    // 2. Direct Announcer / Push Toast to Screen
+    const toastInput = document.getElementById('master-toast-text');
+    const toastPushBtn = document.getElementById('btn-master-push-toast');
+    const toastChips = document.querySelectorAll('.toast-chip');
+
+    const pushToast = (title, msg) => {
+      if (!msg) return;
+      this.send({
+        cmd: 'show_toast',
+        title: title || 'ALERT',
+        message: msg,
+        duration_ms: 6000
+      });
+      this.updateMirrorOverlay(title || 'ALERT', msg, 6000);
+      this.showToastNotification(`Pushed to screen: "${msg}"`, 'success', '🛰️');
+      if (toastInput) toastInput.value = '';
+    };
+
+    if (toastPushBtn && toastInput) {
+      toastPushBtn.addEventListener('click', () => {
+        pushToast('ANNOUNCEMENT', toastInput.value.trim());
+      });
+      toastInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          pushToast('ANNOUNCEMENT', toastInput.value.trim());
+        }
+      });
+    }
+
+    toastChips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        pushToast(chip.dataset.title, chip.dataset.msg);
+      });
+    });
+
+    // 3. Master RGB Light Switch (ON/OFF)
+    const masterRgbBtn = document.getElementById('btn-master-rgb-switch');
+    if (masterRgbBtn) {
+      masterRgbBtn.addEventListener('click', () => {
+        this.rgbEnabled = !this.rgbEnabled;
+        const mode = this.rgbEnabled ? 5 : 0;
+        this.send({ cmd: 'set_rgb_mode', mode: mode });
+        masterRgbBtn.textContent = this.rgbEnabled ? 'ON' : 'OFF';
+        masterRgbBtn.style.color = this.rgbEnabled ? 'var(--color-neon-mint)' : 'var(--color-text-muted)';
+        this.showToastNotification(`Ambient Lights turned ${this.rgbEnabled ? 'ON' : 'OFF'}`, 'info', '💡');
+      });
+    }
+
+    // 4. Master Record Voice Memo Button
+    const masterRecBtn = document.getElementById('btn-master-rec');
+    const masterRecText = document.getElementById('master-rec-text');
+    if (masterRecBtn) {
+      masterRecBtn.addEventListener('click', () => {
+        const newAction = this.isRecording ? 'stop' : 'start';
+        this.send({ cmd: 'record_memo', action: newAction, mode: 0 });
+        if (newAction === 'start') {
+          this.updateMirrorOverlay('RECORDING...', 'Hardware I2S Mic Active', 10000);
+          if (masterRecText) masterRecText.textContent = '⏹ Stop Recording';
+          masterRecBtn.style.background = '#ff3366';
+          masterRecBtn.style.borderColor = '#ff3366';
+          this.showToastNotification('Recording voice memo on ORBIT...', 'warning', '🎙️');
+        } else {
+          if (masterRecText) masterRecText.textContent = 'Record Voice Memo (10s)';
+          masterRecBtn.style.background = '';
+          masterRecBtn.style.borderColor = '';
+          this.showToastNotification('Recording stopped. Saving WAV to SD...', 'success', '💾');
+        }
+      });
+    }
+
+    // 5. Menu D-Pad trigger
+    const masterMenuBtn = document.getElementById('btn-master-menu');
+    if (masterMenuBtn) {
+      masterMenuBtn.addEventListener('click', () => {
+        this.send({ cmd: 'button_press', button: 'enter', type: 'hold' });
+        this.showToastNotification('Opened Carousel Menu on device', 'info', '📱');
+      });
+    }
+
+    // 6. Link to View All Memos
+    const linkMemos = document.getElementById('link-goto-memos');
+    if (linkMemos) {
+      linkMemos.addEventListener('click', (e) => {
+        e.preventDefault();
+        const memosTab = document.querySelector('.nav-tab[data-tab="memos"]');
+        if (memosTab) memosTab.click();
+      });
+    }
+
+    // 7. Tab 5 Model selector sync
+    const tabModelSel = document.getElementById('tab-ai-model-select');
+    const mainModelSel = document.getElementById('ai-model-select');
+    if (tabModelSel && mainModelSel) {
+      tabModelSel.addEventListener('change', () => {
+        mainModelSel.value = tabModelSel.value;
+        mainModelSel.dispatchEvent(new Event('change'));
+      });
+    }
+
+    const tabKeyInput = document.getElementById('tab-ai-api-key');
+    const tabKeySave = document.getElementById('btn-save-tab-ai-key');
+    if (tabKeySave && tabKeyInput && tabModelSel) {
+      tabKeySave.addEventListener('click', () => {
+        const key = tabKeyInput.value.trim();
+        const m = tabModelSel.value;
+        const storageKey = m === 'gemini' ? 'orbit_gemini_api_key' : 'orbit_openai_api_key';
+        if (key) {
+          localStorage.setItem(storageKey, key);
+          this.showToastNotification(`${m.toUpperCase()} API Key saved!`, 'success', '💾');
+        } else {
+          localStorage.removeItem(storageKey);
+          this.showToastNotification(`${m.toUpperCase()} API Key cleared`, 'info', '🗑️');
+        }
+      });
+    }
+  }
+
+  // Update Live Hardware Screen Mirror Overlay
+  updateMirrorOverlay(title, body, durationMs = 5000) {
+    const overlay = document.getElementById('mirror-overlay-banner');
+    const titleEl = document.getElementById('mirror-overlay-title');
+    const bodyEl = document.getElementById('mirror-overlay-body');
+    if (!overlay || !titleEl || !bodyEl) return;
+
+    titleEl.textContent = title;
+    bodyEl.textContent = body;
+    overlay.style.display = 'flex';
+
+    if (this._mirrorOverlayTimer) clearTimeout(this._mirrorOverlayTimer);
+    if (durationMs > 0) {
+      this._mirrorOverlayTimer = setTimeout(() => {
+        overlay.style.display = 'none';
+      }, durationMs);
+    }
   }
 
   // RGB Lighting Controls
@@ -567,8 +1116,13 @@ class OrbitWebController {
         for (let i = 0; i < event.results.length; ++i) {
           currentTranscript += event.results[i][0].transcript + ' ';
         }
+        currentTranscript = currentTranscript.trim();
         if (transcriptEl) {
-          transcriptEl.value = currentTranscript.trim();
+          transcriptEl.value = currentTranscript;
+        }
+        // Live streaming speech text to device screen in real time
+        if (currentTranscript.length > 0) {
+          this.sendLiveSpeechToDevice('VOICE INPUT', 'LIVE MIC', currentTranscript);
         }
       };
 
@@ -1082,6 +1636,32 @@ class OrbitWebController {
         this.mediaRecorder.start(100);
         this.isRecording = true;
 
+        // Concurrent real-time speech-to-text streaming directly to ORBIT display
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+          try {
+            const SpeechRecClass = window.SpeechRecognition || window.webkitSpeechRecognition;
+            this.activeRecSTT = new SpeechRecClass();
+            this.activeRecSTT.continuous = true;
+            this.activeRecSTT.interimResults = true;
+            this.activeRecSTT.lang = 'en-US';
+            this.activeRecSTT.onresult = (ev) => {
+              let liveText = '';
+              for (let i = 0; i < ev.results.length; ++i) {
+                liveText += ev.results[i][0].transcript + ' ';
+              }
+              liveText = liveText.trim();
+              const transcriptEl = document.getElementById('ai-transcript');
+              if (transcriptEl) transcriptEl.value = liveText;
+              if (liveText.length > 0) {
+                this.sendLiveSpeechToDevice('VOICE MEMO', 'RECORDING...', liveText);
+              }
+            };
+            this.activeRecSTT.start();
+          } catch (e) {
+            console.warn('Live recording STT notice:', e);
+          }
+        }
+
         // Update UI
         if (recToggleBtn) recToggleBtn.classList.add('recording');
         if (btnText) btnText.textContent = 'Stop Recording';
@@ -1135,6 +1715,10 @@ class OrbitWebController {
 
   // Stop Voice Recording
   async stopVoiceRecording() {
+    if (this.activeRecSTT) {
+      try { this.activeRecSTT.stop(); } catch (e) {}
+      this.activeRecSTT = null;
+    }
     const recToggleBtn = document.getElementById('btn-web-rec-toggle');
     const recPauseBtn = document.getElementById('btn-web-rec-pause');
     const recCancelBtn = document.getElementById('btn-web-rec-cancel');
@@ -1170,6 +1754,10 @@ class OrbitWebController {
 
   // Cancel / Reset Voice Recording
   cancelVoiceRecording() {
+    if (this.activeRecSTT) {
+      try { this.activeRecSTT.stop(); } catch (e) {}
+      this.activeRecSTT = null;
+    }
     this.isRecording = false;
     if (this.recTimerInterval) {
       clearInterval(this.recTimerInterval);
@@ -2328,7 +2916,84 @@ create policy "Allow all delete" on public.recordings for delete using (true);
     reader.readAsDataURL(file);
   }
 
-  // Push Toast Form
+  // Wallpaper Preset Samples
+  setupWallpaperPresets() {
+    const presetBtns = document.querySelectorAll('.preset-wall-btn');
+    const canvas = document.getElementById('preview-canvas');
+    const sendBtn = document.getElementById('btn-send-wallpaper');
+    if (!canvas) return;
+
+    presetBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const preset = btn.dataset.preset;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, 128, 160);
+
+        if (preset === 'space') {
+          const grad = ctx.createLinearGradient(0, 0, 128, 160);
+          grad.addColorStop(0, '#050711');
+          grad.addColorStop(0.5, '#120b29');
+          grad.addColorStop(1, '#001c38');
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, 128, 160);
+
+          ctx.fillStyle = '#fff';
+          for (let i = 0; i < 40; i++) {
+            const sx = (i * 37) % 128;
+            const sy = (i * 53) % 160;
+            ctx.fillRect(sx, sy, 1, 1);
+          }
+          ctx.fillStyle = '#00f0ff';
+          ctx.beginPath();
+          ctx.arc(64, 80, 24, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (preset === 'cyber') {
+          const grad = ctx.createLinearGradient(0, 0, 0, 160);
+          grad.addColorStop(0, '#0d0221');
+          grad.addColorStop(0.6, '#541388');
+          grad.addColorStop(1, '#ff3366');
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, 128, 160);
+
+          ctx.fillStyle = '#fea000';
+          ctx.beginPath();
+          ctx.arc(64, 60, 28, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (preset === 'sunset') {
+          const grad = ctx.createLinearGradient(0, 0, 0, 160);
+          grad.addColorStop(0, '#2e0854');
+          grad.addColorStop(0.5, '#ea4c89');
+          grad.addColorStop(1, '#fea000');
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, 128, 160);
+        } else if (preset === 'pixel') {
+          ctx.fillStyle = '#0a0e17';
+          ctx.fillRect(0, 0, 128, 160);
+          ctx.fillStyle = '#2fe89f';
+          ctx.font = '10px monospace';
+          ctx.fillText('ORBIT OS', 38, 70);
+          ctx.fillStyle = '#00f0ff';
+          ctx.fillText('128x160', 44, 90);
+        } else { // zen
+          const grad = ctx.createLinearGradient(0, 0, 128, 160);
+          grad.addColorStop(0, '#091e1d');
+          grad.addColorStop(1, '#1b4d3e');
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, 128, 160);
+          ctx.strokeStyle = '#2fe89f';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(64, 80, 30, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        if (sendBtn) sendBtn.disabled = false;
+        this.showToastNotification(`Loaded ${btn.textContent.trim()} Wallpaper`, 'info', '🖼️');
+      });
+    });
+  }
+
+  // Push Toast Transmitter Form
   setupToastForm() {
     const form = document.getElementById('toast-form');
     if (!form) return;
@@ -2348,8 +3013,93 @@ create policy "Allow all delete" on public.recordings for delete using (true);
         rgb_color: color
       });
 
-      alert('Toast notification transmitted to ORBIT display!');
+      this.showToastNotification(`Toast Transmitted: "${title}"`, 'success', '🛰️');
     });
+  }
+
+  // Push Toast 1-Click Presets & Live 128x160 TFT Screen Preview
+  setupToastPresetsAndPreview() {
+    const titleInput = document.getElementById('toast-title');
+    const bodyInput = document.getElementById('toast-body');
+    const colorInput = document.getElementById('toast-color');
+
+    const updatePreview = () => {
+      const title = titleInput ? titleInput.value : 'Alert';
+      const body = bodyInput ? bodyInput.value : '';
+      const color = colorInput ? colorInput.value : '#00ffff';
+      this.renderToastScreenPreview(title, body, color);
+    };
+
+    if (titleInput) titleInput.addEventListener('input', updatePreview);
+    if (bodyInput) bodyInput.addEventListener('input', updatePreview);
+    if (colorInput) colorInput.addEventListener('input', updatePreview);
+
+    const presetBtns = document.querySelectorAll('.toast-preset-btn');
+    presetBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const title = btn.dataset.title;
+        const body = btn.dataset.body;
+        const color = btn.dataset.color || '#00ffff';
+
+        if (titleInput) titleInput.value = title;
+        if (bodyInput) bodyInput.value = body;
+        if (colorInput) colorInput.value = color;
+
+        updatePreview();
+        this.showToastNotification(`Toast Preset Loaded: ${title}`, 'info', '🔔');
+      });
+    });
+
+    updatePreview();
+  }
+
+  renderToastScreenPreview(title, body, color) {
+    const canvas = document.getElementById('toast-preview-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    // Simulate ST7735 128x160 Display Background
+    ctx.fillStyle = '#060911';
+    ctx.fillRect(0, 0, 128, 160);
+
+    // Status Bar Header
+    ctx.fillStyle = '#101726';
+    ctx.fillRect(0, 0, 128, 14);
+    ctx.fillStyle = '#00f0ff';
+    ctx.font = '8px monospace';
+    ctx.fillText('12:00', 4, 10);
+    ctx.fillText('WiFi', 98, 10);
+
+    // Mock Active App Content (Home clock)
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.fillText('12:00', 38, 70);
+    ctx.font = '8px sans-serif';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText('ORBIT OS v2', 36, 85);
+
+    // Toast Card Overlay
+    const cardX = 6, cardY = 100, cardW = 116, cardH = 46;
+    ctx.fillStyle = '#0a101f';
+    ctx.fillRect(cardX, cardY, cardW, cardH);
+
+    ctx.strokeStyle = color || '#00f0ff';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(cardX, cardY, cardW, cardH);
+
+    // Title
+    ctx.fillStyle = color || '#00f0ff';
+    ctx.font = 'bold 9px sans-serif';
+    ctx.fillText((title || 'Alert').substring(0, 16), cardX + 6, cardY + 14);
+
+    // Body
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = '8px sans-serif';
+    const cleanBody = (body || '').substring(0, 32);
+    ctx.fillText(cleanBody.substring(0, 17), cardX + 6, cardY + 28);
+    if (cleanBody.length > 17) {
+      ctx.fillText(cleanBody.substring(17, 34), cardX + 6, cardY + 39);
+    }
   }
 
   // Weather & Climate Studio
@@ -2357,6 +3107,7 @@ create policy "Allow all delete" on public.recordings for delete using (true);
     const cityInput = document.getElementById('weather-city-input');
     const fetchBtn = document.getElementById('btn-fetch-weather');
     const syncBtn = document.getElementById('btn-sync-weather-device');
+    const cityChips = document.querySelectorAll('.weather-chip');
 
     if (cityInput) {
       cityInput.value = localStorage.getItem('orbit_weather_city') || 'London';
@@ -2367,7 +3118,23 @@ create policy "Allow all delete" on public.recordings for delete using (true);
           this.fetchLiveWeather();
         }
       });
+      cityInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          this.fetchLiveWeather();
+        }
+      });
     }
+
+    cityChips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        const city = chip.dataset.city;
+        if (cityInput) cityInput.value = city;
+        localStorage.setItem('orbit_weather_city', city);
+        this.fetchLiveWeather();
+        this.showToastNotification(`Fetching weather for ${city}...`, 'info', '⛅');
+      });
+    });
 
     if (fetchBtn) {
       fetchBtn.addEventListener('click', () => {
@@ -2378,7 +3145,6 @@ create policy "Allow all delete" on public.recordings for delete using (true);
     if (syncBtn) {
       syncBtn.addEventListener('click', () => {
         this.syncWeatherToDevice();
-        alert('Live weather data synced to ORBIT Climate screen!');
       });
     }
 
@@ -2414,7 +3180,7 @@ create policy "Allow all delete" on public.recordings for delete using (true);
       };
 
       this.updateWeatherUI();
-      this.syncWeatherToDevice();
+      this.syncWeatherToDevice(false); // sync without alert noise on load
 
       if (statusText) statusText.textContent = `Live: ${this.currentWeather.city} (${this.currentWeather.condition})`;
     } catch (err) {
@@ -2462,13 +3228,13 @@ create policy "Allow all delete" on public.recordings for delete using (true);
     if (badgeEl) {
       if (deltaT > 2.0) {
         badgeEl.textContent = 'Warmer Inside';
-        badgeEl.style.color = '#fea000';
+        badgeEl.style.color = 'var(--color-neon-amber)';
       } else if (deltaT < -2.0) {
         badgeEl.textContent = 'Cooler Inside';
-        badgeEl.style.color = '#00ffff';
+        badgeEl.style.color = 'var(--color-neon-cyan)';
       } else {
         badgeEl.textContent = 'Thermal Balance';
-        badgeEl.style.color = '#22c55e';
+        badgeEl.style.color = 'var(--color-neon-mint)';
       }
     }
 
@@ -2488,7 +3254,7 @@ create policy "Allow all delete" on public.recordings for delete using (true);
   }
 
   // Sync Weather packet to ORBIT device screen
-  syncWeatherToDevice() {
+  syncWeatherToDevice(notify = true) {
     if (!this.currentWeather) return;
     const w = this.currentWeather;
     this.send({
@@ -2502,6 +3268,9 @@ create policy "Allow all delete" on public.recordings for delete using (true);
       city: w.city,
       desc: w.desc
     });
+    if (notify) {
+      this.showToastNotification(`Weather for ${w.city} Pushed to ORBIT Screen`, 'success', '🛰️');
+    }
   }
 
   // Ping Find Device
@@ -2510,6 +3279,7 @@ create policy "Allow all delete" on public.recordings for delete using (true);
     if (btn) {
       btn.addEventListener('click', () => {
         this.send({ cmd: 'find_device' });
+        this.showToastNotification('Device Pinged! Indicator LED is blinking.', 'info', '🔔');
       });
     }
   }
@@ -2520,8 +3290,7 @@ create policy "Allow all delete" on public.recordings for delete using (true);
     if (askAiTabBtn) askAiTabBtn.click();
 
     const queryInput = document.getElementById('ai-query-input');
-    const statusText = document.getElementById('ai-answer-status-text');
-    if (statusText) statusText.textContent = `Transcribing ${filename} from ORBIT...`;
+    this.showToastNotification(`Transcribing ${filename} from ORBIT...`, 'info', '🎙️');
 
     let question = "What is the current temperature and comfort index on ORBIT?";
     const apiKey = localStorage.getItem('orbit_stt_api_key') || localStorage.getItem('orbit_openai_api_key');
@@ -2557,7 +3326,7 @@ create policy "Allow all delete" on public.recordings for delete using (true);
     await this.executeAiQuery(question);
   }
 
-  // Ask AI & Wi-Fi Screen Sync
+  // Ask AI & Conversational Chat Intelligence
   setupAskAi() {
     const modelSelect = document.getElementById('ai-model-select');
     const keyContainer = document.getElementById('ai-key-container');
@@ -2567,14 +3336,9 @@ create policy "Allow all delete" on public.recordings for delete using (true);
     const queryInput = document.getElementById('ai-query-input');
     const submitBtn = document.getElementById('btn-submit-ai-query');
     const voiceBtn = document.getElementById('btn-ai-voice-input');
-    const voiceBtnText = document.getElementById('ai-voice-btn-text');
-    const pushScreenBtn = document.getElementById('btn-push-ai-screen');
-    const copyBtn = document.getElementById('btn-copy-ai-answer');
-    const speakBtn = document.getElementById('btn-speak-ai-answer');
-    const clearBtn = document.getElementById('btn-clear-ai-answer');
+    const clearHistoryBtn = document.getElementById('btn-clear-ai-history');
     const chips = document.querySelectorAll('.prompt-chip');
 
-    // Model selection & API key visibility
     const syncApiKeyUI = () => {
       if (!modelSelect) return;
       const model = modelSelect.value;
@@ -2609,10 +3373,10 @@ create policy "Allow all delete" on public.recordings for delete using (true);
         const storageKey = model === 'gemini' ? 'orbit_gemini_api_key' : 'orbit_openai_api_key';
         if (key) {
           localStorage.setItem(storageKey, key);
-          alert(`${model.toUpperCase()} API key saved in browser storage!`);
+          this.showToastNotification(`${model.toUpperCase()} API key saved locally!`, 'success', '💾');
         } else {
           localStorage.removeItem(storageKey);
-          alert(`${model.toUpperCase()} API key removed from browser storage.`);
+          this.showToastNotification(`${model.toUpperCase()} API key removed`, 'info', '🗑️');
         }
       });
     }
@@ -2626,7 +3390,21 @@ create policy "Allow all delete" on public.recordings for delete using (true);
       });
     });
 
-    // Submit query
+    // Auto-resizing textarea & submit query
+    if (queryInput) {
+      queryInput.addEventListener('input', () => {
+        queryInput.style.height = 'auto';
+        queryInput.style.height = Math.min(100, queryInput.scrollHeight) + 'px';
+      });
+
+      queryInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          if (submitBtn) submitBtn.click();
+        }
+      });
+    }
+
     if (submitBtn && queryInput) {
       submitBtn.addEventListener('click', () => {
         const q = queryInput.value.trim();
@@ -2635,13 +3413,8 @@ create policy "Allow all delete" on public.recordings for delete using (true);
           return;
         }
         this.executeAiQuery(q);
-      });
-
-      queryInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          submitBtn.click();
-        }
+        queryInput.value = '';
+        queryInput.style.height = 'auto';
       });
     }
 
@@ -2657,8 +3430,9 @@ create policy "Allow all delete" on public.recordings for delete using (true);
 
       speechRec.onstart = () => {
         isListening = true;
-        voiceBtn.classList.add('dictating');
-        if (voiceBtnText) voiceBtnText.textContent = 'Listening...';
+        voiceBtn.style.borderColor = 'var(--color-neon-cyan)';
+        voiceBtn.style.color = 'var(--color-neon-cyan)';
+        this.showToastNotification('Listening to microphone...', 'info', '🎙️');
       };
 
       speechRec.onresult = (e) => {
@@ -2666,21 +3440,27 @@ create policy "Allow all delete" on public.recordings for delete using (true);
         for (let i = 0; i < e.results.length; ++i) {
           transcript += e.results[i][0].transcript;
         }
-        if (queryInput) queryInput.value = transcript.trim();
+        transcript = transcript.trim();
+        if (queryInput) queryInput.value = transcript;
+        if (transcript.length > 0) {
+          this.sendLiveSpeechToDevice('VOICE QUERY', 'LISTENING...', transcript);
+        }
       };
 
       speechRec.onerror = () => {
         isListening = false;
-        voiceBtn.classList.remove('dictating');
-        if (voiceBtnText) voiceBtnText.textContent = 'Voice Question';
+        voiceBtn.style.borderColor = '';
+        voiceBtn.style.color = '';
       };
 
       speechRec.onend = () => {
         isListening = false;
-        voiceBtn.classList.remove('dictating');
-        if (voiceBtnText) voiceBtnText.textContent = 'Voice Question';
+        voiceBtn.style.borderColor = '';
+        voiceBtn.style.color = '';
         if (queryInput && queryInput.value.trim()) {
           this.executeAiQuery(queryInput.value.trim());
+          queryInput.value = '';
+          queryInput.style.height = 'auto';
         }
       };
 
@@ -2691,148 +3471,199 @@ create policy "Allow all delete" on public.recordings for delete using (true);
           speechRec.start();
         }
       });
-    } else if (voiceBtn) {
-      voiceBtn.addEventListener('click', () => {
-        alert('Web Speech API is not supported in this browser. Please use Chrome, Safari, or Edge.');
-      });
     }
 
-    // Push current answer to ORBIT screen
-    if (pushScreenBtn) {
-      pushScreenBtn.addEventListener('click', () => {
-        if (!this.lastAiAnswer) {
-          alert('No AI answer to display yet! Ask a question first.');
-          return;
+    // Clear chat history
+    if (clearHistoryBtn) {
+      clearHistoryBtn.addEventListener('click', () => {
+        const chatFeed = document.getElementById('ai-chat-feed');
+        if (chatFeed) {
+          chatFeed.innerHTML = `
+            <div class="chat-message message-bot">
+              <div class="chat-avatar">🤖</div>
+              <div class="chat-bubble-wrap">
+                <div class="chat-bubble">
+                  Chat history cleared. I am ready for your next question!
+                </div>
+                <div class="chat-timestamp">Just now</div>
+              </div>
+            </div>
+          `;
         }
-        this.pushAiAnswerToDevice(this.lastAiQuestion || 'AI Answer', this.lastAiAnswer);
-        const originalText = pushScreenBtn.innerHTML;
-        pushScreenBtn.innerHTML = '<span>✅ Displayed on ORBIT!</span>';
-        setTimeout(() => { pushScreenBtn.innerHTML = originalText; }, 2000);
-      });
-    }
-
-    // Copy answer to clipboard
-    if (copyBtn) {
-      copyBtn.addEventListener('click', async () => {
-        if (!this.lastAiAnswer) return;
-        try {
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            await navigator.clipboard.writeText(this.lastAiAnswer);
-          } else {
-            const ta = document.createElement('textarea');
-            ta.value = this.lastAiAnswer;
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            document.body.removeChild(ta);
-          }
-          copyBtn.textContent = '✓ Copied!';
-          setTimeout(() => { copyBtn.textContent = '📋 Copy'; }, 2000);
-        } catch (err) {
-          console.warn('Copy error:', err);
-        }
-      });
-    }
-
-    // Text to Speech Read Aloud (ElevenLabs Ultra-Realistic AI Voice or Browser Native)
-    if (speakBtn) {
-      speakBtn.addEventListener('click', async () => {
-        if (!this.lastAiAnswer) return;
-
-        const elevenKey = localStorage.getItem('orbit_elevenlabs_key');
-        if (elevenKey && elevenKey.length > 10) {
-          speakBtn.disabled = true;
-          const origText = speakBtn.innerHTML;
-          speakBtn.innerHTML = '<span>⏳ Speaking (ElevenLabs)...</span>';
-          try {
-            // Default Voice: Rachel (21m00Tcm4TlvDq8ikWAM)
-            const voiceId = localStorage.getItem('orbit_elevenlabs_voice') || '21m00Tcm4TlvDq8ikWAM';
-            const cleanText = this.lastAiAnswer.replace(/[#*`_]/g, '').substring(0, 450);
-
-            const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-              method: 'POST',
-              headers: {
-                'xi-api-key': elevenKey,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                text: cleanText,
-                model_id: 'eleven_turbo_v2_5',
-                voice_settings: { stability: 0.5, similarity_boost: 0.75 }
-              })
-            });
-
-            if (!res.ok) {
-              const err = await res.json().catch(() => ({}));
-              throw new Error(err.detail?.message || `HTTP ${res.status}`);
-            }
-
-            const audioBlob = await res.blob();
-            this.loadAudioBlobIntoPlayer(audioBlob, `ElevenLabs_AI_Voice_${Date.now()}.mp3`);
-            this.webAudio.play().catch(() => {});
-            speakBtn.innerHTML = origText;
-            speakBtn.disabled = false;
-            return;
-          } catch (e) {
-            console.warn('ElevenLabs API error, falling back to browser speech:', e);
-            speakBtn.innerHTML = origText;
-            speakBtn.disabled = false;
-          }
-        }
-
-        // Browser Native Speech Fallback
-        if ('speechSynthesis' in window) {
-          if (window.speechSynthesis.speaking) {
-            window.speechSynthesis.cancel();
-            speakBtn.textContent = '🔊 Read Aloud';
-            return;
-          }
-          const utter = new SpeechSynthesisUtterance(this.lastAiAnswer);
-          utter.rate = 1.0;
-          utter.onend = () => { speakBtn.textContent = '🔊 Read Aloud'; };
-          utter.onerror = () => { speakBtn.textContent = '🔊 Read Aloud'; };
-          speakBtn.textContent = '⏹️ Stop';
-          window.speechSynthesis.speak(utter);
-        } else {
-          alert('Speech synthesis not supported in this browser.');
-        }
-      });
-    }
-
-    // Clear response & dismiss on device
-    if (clearBtn) {
-      clearBtn.addEventListener('click', () => {
-        const responseEl = document.getElementById('ai-response-display');
-        const statusText = document.getElementById('ai-answer-status-text');
-        if (responseEl) {
-          responseEl.innerHTML = '<p class="placeholder-text">AI answers will appear here in real-time. When connected to Wi-Fi, the answer will also be displayed on your ORBIT ESP32-S3 screen with UP/DOWN scroll controls!</p>';
-        }
-        if (statusText) statusText.textContent = 'Ready for Question';
         this.lastAiQuestion = '';
         this.lastAiAnswer = '';
-
-        // Dismiss modal on device TFT screen
         this.send({ cmd: 'hide_ai_answer' });
-        fetch('/api/ai/clear', { method: 'POST' }).catch(() => {});
+        this.showToastNotification('AI conversation cleared', 'info', '🗑️');
       });
     }
   }
 
-  // Execute AI query with selected engine
+  // Append formatted chat bubble to conversational feed
+  appendChatMessage(role, text) {
+    const chatFeed = document.getElementById('ai-chat-feed');
+    if (!chatFeed) return;
+
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `chat-message ${role === 'user' ? 'message-user' : 'message-bot'}`;
+
+    if (role === 'user') {
+      msgDiv.innerHTML = `
+        <div class="chat-avatar">👤</div>
+        <div class="chat-bubble-wrap">
+          <div class="chat-bubble">${text}</div>
+          <div class="chat-timestamp">${timeStr}</div>
+        </div>
+      `;
+    } else {
+      const formattedText = text.split('\n\n').map(p => `<p style="margin-bottom:6px;">${p.replace(/\n/g, '<br>')}</p>`).join('');
+      msgDiv.innerHTML = `
+        <div class="chat-avatar">🤖</div>
+        <div class="chat-bubble-wrap">
+          <div class="chat-bubble">${formattedText}</div>
+          <div class="chat-bubble-actions">
+            <button type="button" class="chat-action-btn btn-chat-sync" title="Show on ORBIT Screen">
+              <span>📺 Show on Screen</span>
+            </button>
+            <button type="button" class="chat-action-btn btn-chat-speak" title="Read Aloud with Speech Synthesis">
+              <span>🔊 Read Aloud</span>
+            </button>
+            <button type="button" class="chat-action-btn btn-chat-copy" title="Copy to clipboard">
+              <span>📋 Copy</span>
+            </button>
+          </div>
+          <div class="chat-timestamp">${timeStr}</div>
+        </div>
+      `;
+
+      // Wire Action Buttons
+      const syncBtn = msgDiv.querySelector('.btn-chat-sync');
+      const speakBtn = msgDiv.querySelector('.btn-chat-speak');
+      const copyBtn = msgDiv.querySelector('.btn-chat-copy');
+
+      if (syncBtn) {
+        syncBtn.addEventListener('click', () => {
+          this.pushAiAnswerToDevice(this.lastAiQuestion || 'AI Assistant', text);
+          this.showToastNotification('Displayed on ORBIT Screen!', 'success', '📺');
+        });
+      }
+
+      if (copyBtn) {
+        copyBtn.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(text);
+            copyBtn.textContent = '✓ Copied!';
+            setTimeout(() => { copyBtn.innerHTML = '<span>📋 Copy</span>'; }, 2000);
+            this.showToastNotification('Copied answer to clipboard!', 'info', '📋');
+          } catch (e) {
+            console.warn(e);
+          }
+        });
+      }
+
+      if (speakBtn) {
+        speakBtn.addEventListener('click', () => {
+          this.speakText(text, speakBtn);
+        });
+      }
+    }
+
+    chatFeed.appendChild(msgDiv);
+    chatFeed.scrollTop = chatFeed.scrollHeight;
+  }
+
+  // Voice speech output handler (ElevenLabs or Native fallback)
+  async speakText(text, btnEl) {
+    const elevenKey = localStorage.getItem('orbit_elevenlabs_key');
+    const origHtml = btnEl ? btnEl.innerHTML : '';
+
+    if (elevenKey && elevenKey.length > 10) {
+      if (btnEl) btnEl.innerHTML = '<span>⏳ Speaking...</span>';
+      try {
+        const voiceId = localStorage.getItem('orbit_elevenlabs_voice') || '21m00Tcm4TlvDq8ikWAM';
+        const cleanText = text.replace(/[#*`_]/g, '').substring(0, 450);
+
+        const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+          method: 'POST',
+          headers: {
+            'xi-api-key': elevenKey,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            text: cleanText,
+            model_id: 'eleven_turbo_v2_5',
+            voice_settings: { stability: 0.5, similarity_boost: 0.75 }
+          })
+        });
+
+        if (res.ok) {
+          const audioBlob = await res.blob();
+          this.loadAudioBlobIntoPlayer(audioBlob, `ElevenLabs_${Date.now()}.mp3`);
+          this.webAudio.play().catch(() => {});
+          if (btnEl) btnEl.innerHTML = origHtml;
+          return;
+        }
+      } catch (e) {
+        console.warn('ElevenLabs API error, falling back:', e);
+      }
+      if (btnEl) btnEl.innerHTML = origHtml;
+    }
+
+    // Native Web Speech Fallback
+    if ('speechSynthesis' in window) {
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        if (btnEl) btnEl.innerHTML = '<span>🔊 Read Aloud</span>';
+        return;
+      }
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.rate = 1.0;
+      utter.onend = () => { if (btnEl) btnEl.innerHTML = '<span>🔊 Read Aloud</span>'; };
+      utter.onerror = () => { if (btnEl) btnEl.innerHTML = '<span>🔊 Read Aloud</span>'; };
+      if (btnEl) btnEl.innerHTML = '<span>⏹️ Stop</span>';
+      window.speechSynthesis.speak(utter);
+    }
+  }
+
+  // Execute AI query with selected engine & append to chat
   async executeAiQuery(prompt) {
-    const responseEl = document.getElementById('ai-response-display');
-    const statusText = document.getElementById('ai-answer-status-text');
     const modelSelect = document.getElementById('ai-model-select');
     const autoSyncCheckbox = document.getElementById('ai-auto-sync-device');
     const model = modelSelect ? modelSelect.value : 'orbit';
+    const cleanPrompt = prompt.trim();
 
-    if (statusText) statusText.textContent = '✨ Thinking & Formulating Answer...';
-    if (responseEl) {
-      responseEl.innerHTML = `<div style="display:flex; align-items:center; gap:10px; color:var(--color-neon-cyan); padding:10px 0;"><span class="pulse-dot-cyan"></span><span>Querying <strong>${model.toUpperCase()}</strong> engine...</span></div>`;
+    // 1. Add user message
+    this.appendChatMessage('user', cleanPrompt);
+
+    // 📺 IMMEDIATELY SHOW WHAT THE USER ASKED ON THE HARDWARE DISPLAY!
+    this.send({
+      cmd: 'show_voice_text',
+      title: 'YOU ASKED',
+      subtitle: 'PROCESSING...',
+      text: cleanPrompt
+    });
+
+    // 2. Add thinking bubble
+    const chatFeed = document.getElementById('ai-chat-feed');
+    const thinkingId = 'thinking-' + Date.now();
+    if (chatFeed) {
+      const thinkDiv = document.createElement('div');
+      thinkDiv.id = thinkingId;
+      thinkDiv.className = 'chat-message message-bot';
+      thinkDiv.innerHTML = `
+        <div class="chat-avatar">🤖</div>
+        <div class="chat-bubble-wrap">
+          <div class="chat-bubble" style="color:var(--color-neon-cyan); display:flex; align-items:center; gap:8px;">
+            <span class="pulse-dot-cyan"></span>
+            <span>Thinking with ${model.toUpperCase()}...</span>
+          </div>
+        </div>
+      `;
+      chatFeed.appendChild(thinkDiv);
+      chatFeed.scrollTop = chatFeed.scrollHeight;
     }
 
     let answer = '';
-    const cleanPrompt = prompt.trim();
 
     try {
       if (model === 'gemini') {
@@ -2896,22 +3727,19 @@ create policy "Allow all delete" on public.recordings for delete using (true);
       answer = `API Notice: ${err.message}\n\nAmbient Fallback:\n${this.generateAmbientAnswer(cleanPrompt)}`;
     }
 
-    // Save answer state
+    // Remove thinking indicator
+    const thinkingEl = document.getElementById(thinkingId);
+    if (thinkingEl && thinkingEl.parentNode) {
+      thinkingEl.parentNode.removeChild(thinkingEl);
+    }
+
+    // Save answer state & append response bubble
     this.lastAiQuestion = cleanPrompt;
     this.lastAiAnswer = answer;
+    this.appendChatMessage('bot', answer);
 
-    // Render formatted response
-    if (responseEl) {
-      const formattedHtml = answer.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
-      responseEl.innerHTML = formattedHtml;
-    }
-
-    if (statusText) statusText.textContent = '✓ Answer Delivered';
-
-    // Auto-sync to ORBIT screen if enabled
-    if (autoSyncCheckbox && autoSyncCheckbox.checked) {
-      this.pushAiAnswerToDevice(cleanPrompt, answer);
-    }
+    // 📺 Show AI Answer on ORBIT screen
+    this.pushAiAnswerToDevice(cleanPrompt, answer);
   }
 
   // Built-in intelligent ambient knowledge synthesis
@@ -3110,6 +3938,27 @@ create policy "Allow all delete" on public.recordings for delete using (true);
         }
       });
     }
+
+    // Forget Saved Wi-Fi Buttons (Erases NVS credentials & reverts to SoftAP hotspot)
+    document.querySelectorAll('.btn-forget-wifi').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Forget saved Wi-Fi network?\n\nORBIT will erase saved credentials and immediately switch back to setup hotspot mode (ORBIT-Setup at 192.168.4.1).')) {
+          return;
+        }
+
+        this.showToastNotification('Forgetting Wi-Fi network...', 'warning', '🗑️');
+        this.send({ cmd: 'forget_wifi' });
+
+        try {
+          await fetch('/api/wifi/forget', { method: 'POST' });
+        } catch (e) {}
+
+        setTimeout(() => {
+          this.showToastNotification('Wi-Fi forgotten. Connect to ORBIT-Setup at 192.168.4.1 to configure.', 'info', '📶');
+          updateStatusPill();
+        }, 1200);
+      });
+    });
   }
 
   // Device Settings & Complete Hardware Diagnostics

@@ -371,6 +371,18 @@ const char WIFI_SETUP_HTML[] PROGMEM = R"rawliteral(
       </div>
     </div>
 
+    <!-- Direct Companion Dashboard Launcher -->
+    <div style="background: rgba(0, 255, 255, 0.08); border: 1px solid rgba(0, 255, 255, 0.25); border-radius: 12px; padding: 12px 14px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+      <div>
+        <div style="font-weight: 700; font-size: 0.88rem; color: #00ffff; display: flex; align-items: center; gap: 6px;">
+          <span>⚡</span>
+          <span>Companion Dashboard</span>
+        </div>
+        <div style="font-size: 0.76rem; color: #8b9bb4; margin-top: 2px;">Control AI, lights & sensors in Hotspot mode</div>
+      </div>
+      <a href="/dash" style="background: #00ffff; color: #0a0e17; font-weight: 700; font-size: 0.8rem; padding: 7px 14px; border-radius: 6px; text-decoration: none; white-space: nowrap; box-shadow: 0 2px 10px rgba(0,255,255,0.3); transition: transform 0.15s ease;">Open &rarr;</a>
+    </div>
+
     <!-- Scanned Wi-Fi Section -->
     <div class="section-title">
       <span>Nearby Networks (2.4 GHz)</span>
@@ -489,7 +501,14 @@ const char WIFI_SETUP_HTML[] PROGMEM = R"rawliteral(
         netList.innerHTML = '';
 
         if (!data.networks || data.networks.length === 0) {
-          netList.innerHTML = '<div class="empty-state">No networks found. Try clicking Rescan or enter SSID manually below.</div>';
+          netList.innerHTML = `
+            <div class="empty-state">
+              No 2.4 GHz networks discovered yet.<br>Click <strong>Rescan</strong> or enter your SSID manually below.
+              <div style="margin-top: 10px; font-size: 0.75rem; color: #8b9bb4; line-height: 1.4;">
+                💡 <em>Note: If connecting to a mobile phone hotspot, ensure <strong>2.4 GHz Band</strong> or <strong>"Maximize Compatibility"</strong> is turned ON in your phone's Hotspot settings.</em>
+              </div>
+            </div>
+          `;
           return;
         }
 

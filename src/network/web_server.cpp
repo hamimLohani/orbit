@@ -2,6 +2,7 @@
 #include "src/network/websocket_server.h"
 #include "src/network/wifi_manager.h"
 #include "src/network/wifi_setup_page.h"
+#include "src/network/embedded_web_assets.h"
 #include "src/network/ota_web_page.h"
 #include "src/network/ota_handler.h"
 #include "src/core/shared_data.h"
@@ -13,6 +14,72 @@
 #include <Update.h>
 #include <esp_system.h>
 #include <esp_idf_version.h>
+
+static void sendDashboardHtml(AsyncWebServerRequest* request) {
+    if (LittleFS.exists("/web/index.html")) {
+        request->send(LittleFS, "/web/index.html", "text/html");
+        return;
+    }
+    SemaphoreHandle_t mutex = RenderEngine::getSpiMutex();
+    bool sdExists = false;
+    if (xSemaphoreTake(mutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+        digitalWrite(PIN_TFT_CS, HIGH);
+        sdExists = SD.exists("/web/index.html");
+        xSemaphoreGive(mutex);
+    }
+    if (sdExists) {
+        request->send(SD, "/web/index.html", "text/html");
+        return;
+    }
+    AsyncWebServerResponse* res = request->beginResponse_P(200, "text/html", EMBEDDED_INDEX_HTML_GZ, EMBEDDED_INDEX_HTML_GZ_LEN);
+    res->addHeader("Content-Encoding", "gzip");
+    res->addHeader("Cache-Control", "no-cache");
+    request->send(res);
+}
+
+static void sendStyleCss(AsyncWebServerRequest* request) {
+    if (LittleFS.exists("/web/style.css")) {
+        request->send(LittleFS, "/web/style.css", "text/css");
+        return;
+    }
+    SemaphoreHandle_t mutex = RenderEngine::getSpiMutex();
+    bool sdExists = false;
+    if (xSemaphoreTake(mutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+        digitalWrite(PIN_TFT_CS, HIGH);
+        sdExists = SD.exists("/web/style.css");
+        xSemaphoreGive(mutex);
+    }
+    if (sdExists) {
+        request->send(SD, "/web/style.css", "text/css");
+        return;
+    }
+    AsyncWebServerResponse* res = request->beginResponse_P(200, "text/css", EMBEDDED_STYLE_CSS_GZ, EMBEDDED_STYLE_CSS_GZ_LEN);
+    res->addHeader("Content-Encoding", "gzip");
+    res->addHeader("Cache-Control", "public, max-age=86400");
+    request->send(res);
+}
+
+static void sendAppJs(AsyncWebServerRequest* request) {
+    if (LittleFS.exists("/web/app.js")) {
+        request->send(LittleFS, "/web/app.js", "application/javascript");
+        return;
+    }
+    SemaphoreHandle_t mutex = RenderEngine::getSpiMutex();
+    bool sdExists = false;
+    if (xSemaphoreTake(mutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+        digitalWrite(PIN_TFT_CS, HIGH);
+        sdExists = SD.exists("/web/app.js");
+        xSemaphoreGive(mutex);
+    }
+    if (sdExists) {
+        request->send(SD, "/web/app.js", "application/javascript");
+        return;
+    }
+    AsyncWebServerResponse* res = request->beginResponse_P(200, "application/javascript", EMBEDDED_APP_JS_GZ, EMBEDDED_APP_JS_GZ_LEN);
+    res->addHeader("Content-Encoding", "gzip");
+    res->addHeader("Cache-Control", "public, max-age=86400");
+    request->send(res);
+}
 
 WebServer::WebServer() : _server(HTTP_PORT) {}
 
@@ -114,27 +181,55 @@ void WebServer::setupRoutes() {
         }
     });
 
-    // 3. Serve LittleFS Web Companion SPA if mounted
+    // 3. Static Web Companion Assets (LittleFS -> SD Card -> Embedded PROGMEM GZIP)
+    _server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest* request) {
+        sendStyleCss(request);
+    });
+    _server.on("/app.js", HTTP_GET, [](AsyncWebServerRequest* request) {
+        sendAppJs(request);
+    });
+    _server.on("/dash", HTTP_GET, [](AsyncWebServerRequest* request) {
+        sendDashboardHtml(request);
+    });
+    _server.on("/app", HTTP_GET, [](AsyncWebServerRequest* request) {
+        sendDashboardHtml(request);
+    });
+    _server.on("/index.html", HTTP_GET, [](AsyncWebServerRequest* request) {
+        sendDashboardHtml(request);
+    });
+
     if (_fsMounted) {
-        _server.serveStatic("/", LittleFS, "/web/").setDefaultFile("index.html");
+        _server.serveStatic("/", LittleFS, "/web/");
     }
 
     // 4. Root / Landing Page Handler
-    _server.on("/", HTTP_GET, [this](AsyncWebServerRequest* request) {
-        // If in SoftAP mode and not connected to a local router, serve the Wi-Fi setup page
-        if (WifiManager::getInstance().isApActive() && !WifiManager::getInstance().isConnected()) {
+    _server.on("/", HTTP_GET, [](AsyncWebServerRequest* request) {
+        // Query param override: ?setup forces Wi-Fi setup page
+        if (request->hasParam("setup")) {
             request->send_P(200, "text/html", WIFI_SETUP_HTML);
             return;
         }
 
-        // If LittleFS has index.html, serve the full companion dashboard
-        if (_fsMounted && LittleFS.exists("/web/index.html")) {
-            request->send(LittleFS, "/web/index.html", "text/html");
+        // Query param override: ?dash or ?app forces full companion dashboard
+        if (request->hasParam("dash") || request->hasParam("app")) {
+            sendDashboardHtml(request);
             return;
         }
 
-        // Fallback: serve the self-contained setup page
-        request->send_P(200, "text/html", WIFI_SETUP_HTML);
+        // If connected to home Wi-Fi station, always serve dashboard
+        if (WifiManager::getInstance().isConnected()) {
+            sendDashboardHtml(request);
+            return;
+        }
+
+        // If in SoftAP mode and not connected to home Wi-Fi, serve setup portal
+        // (which features a 1-click button to launch the dashboard directly in SoftAP mode)
+        if (WifiManager::getInstance().isApActive()) {
+            request->send_P(200, "text/html", WIFI_SETUP_HTML);
+            return;
+        }
+
+        sendDashboardHtml(request);
     });
 }
 
@@ -153,6 +248,7 @@ void WebServer::setupRestApi() {
         endpoints["wifi_scan"]    = "GET /api/wifi/scan";
         endpoints["wifi_status"]  = "GET /api/wifi/status";
         endpoints["wifi_connect"] = "POST /api/wifi/connect";
+        endpoints["wifi_forget"]  = "POST /api/wifi/forget";
         endpoints["system_info"]  = "GET /api/system/info";
         endpoints["system_reboot"]= "POST /api/system/reboot";
         endpoints["files_upload"] = "POST /api/files/upload?target=[sd|lfs]&path=<path>";
@@ -537,6 +633,16 @@ void WebServer::setupRestApi() {
         String out;
         serializeJson(res, out);
         request->send(200, "application/json", out);
+    });
+
+    // 9b. Forget Saved Wi-Fi Credentials API (POST /api/wifi/forget & GET /api/wifi/forget)
+    _server.on("/api/wifi/forget", HTTP_POST, [](AsyncWebServerRequest* request) {
+        WifiManager::getInstance().forgetWifi();
+        request->send(200, "application/json", "{\"status\":\"ok\",\"message\":\"Wi-Fi credentials forgotten. Switched to SoftAP mode.\"}");
+    });
+    _server.on("/api/wifi/forget", HTTP_GET, [](AsyncWebServerRequest* request) {
+        WifiManager::getInstance().forgetWifi();
+        request->send(200, "application/json", "{\"status\":\"ok\",\"message\":\"Wi-Fi credentials forgotten. Switched to SoftAP mode.\"}");
     });
 
     // 10. Comprehensive Hardware & OS Diagnostics API (GET /api/system/info)

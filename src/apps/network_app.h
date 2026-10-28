@@ -25,8 +25,9 @@ public:
 private:
     void renderPage0(RenderEngine& gfx); // Wi-Fi & NTP Time
     void renderPage1(RenderEngine& gfx); // OTA Flasher & File Uploads
+    void renderPage2(RenderEngine& gfx); // Reset / Forget Wi-Fi
     void renderOtaProgress(RenderEngine& gfx);
 
     uint8_t _currentPage = 0;
-    const uint8_t _maxPages = 2;
+    const uint8_t _maxPages = 3;
 };

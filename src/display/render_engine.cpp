@@ -267,14 +267,20 @@ void RenderEngine::renderAiAnswerOverlay() {
     // Full screen backdrop
     fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, COLOR_VOID_DARK);
 
+    // Dynamic theme color based on overlay state
+    uint16_t headerColor = COLOR_NEON_CYAN;
+    if (strstr(_aiAnswer.title, "ASKED")) headerColor = COLOR_NEON_PURPLE;
+    else if (strstr(_aiAnswer.title, "LISTEN")) headerColor = COLOR_NEON_AMBER;
+    else if (strstr(_aiAnswer.title, "VOICE") || strstr(_aiAnswer.title, "DICTATION")) headerColor = COLOR_NEON_MINT;
+
     // Frame border
-    drawRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, COLOR_NEON_CYAN);
+    drawRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, headerColor);
 
     // Header bar (y=0..18)
     fillRect(1, 1, SCREEN_WIDTH - 2, 17, COLOR_SLATE_MID);
-    drawText(6, 5, _aiAnswer.title, COLOR_NEON_CYAN, 1);
+    drawText(6, 5, _aiAnswer.title, headerColor, 1);
     drawTextRight(122, 5, "ORBIT", COLOR_NEON_MINT, 1);
-    drawFastHLine(1, 18, SCREEN_WIDTH - 2, COLOR_NEON_CYAN);
+    drawFastHLine(1, 18, SCREEN_WIDTH - 2, headerColor);
 
     // Subtitle / Question Box (y=21..44, h=23, x=4, w=120)
     drawCard(4, 21, 120, 23, COLOR_SLATE_DARK, COLOR_SLATE_BORDER);

@@ -26,8 +26,10 @@ void NetworkApp::onRender(RenderEngine& gfx) {
 
     if (_currentPage == 0) {
         renderPage0(gfx);
-    } else {
+    } else if (_currentPage == 1) {
         renderPage1(gfx);
+    } else {
+        renderPage2(gfx);
     }
 }
 
@@ -57,7 +59,7 @@ void NetworkApp::renderOtaProgress(RenderEngine& gfx) {
 
 void NetworkApp::renderPage0(RenderEngine& gfx) {
     TelemetryData telem = SharedData::getInstance().getData();
-    gfx.drawHeader("NETWORK (1/2)", 9);
+    gfx.drawHeader("NETWORK (1/3)", 9);
 
     if (telem.wifiConnected) {
         // Card 1: Wi-Fi Connection (x=6, y=39, w=116, h=48)
@@ -78,7 +80,7 @@ void NetworkApp::renderPage0(RenderEngine& gfx) {
         gfx.drawText(12, 123, telem.dateStr, COLOR_NEON_CYAN, 1);
 
         // Footer at y=147
-        gfx.drawTextCentered(64, 147, "L/R:OTA   OK:Setup AP", COLOR_TEXT_MUTED, 1);
+        gfx.drawTextCentered(64, 147, "OK:AP  Hold:Forget", COLOR_TEXT_MUTED, 1);
     } else {
         // Hotspot Setup Mode Card (x=6, y=39, w=116, h=48)
         gfx.drawCard(6, 39, 116, 48, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
@@ -92,13 +94,13 @@ void NetworkApp::renderPage0(RenderEngine& gfx) {
         gfx.drawText(12, 106, "Browse 192.168.4.1", COLOR_NEON_MINT, 1);
         gfx.drawText(12, 118, "Pass: orbit1234", COLOR_TEXT_LIGHT, 1);
 
-        gfx.drawTextCentered(64, 147, "L/R:OTA   OK:Reconnect", COLOR_TEXT_MUTED, 1);
+        gfx.drawTextCentered(64, 147, "L/R:Page  OK:Connect", COLOR_TEXT_MUTED, 1);
     }
 }
 
 void NetworkApp::renderPage1(RenderEngine& gfx) {
     TelemetryData telem = SharedData::getInstance().getData();
-    gfx.drawHeader("WI-FI OTA (2/2)", 9);
+    gfx.drawHeader("WI-FI OTA (2/3)", 9);
 
     // Card 1: Over-The-Air Flasher Status (x=6, y=39, w=116, h=48)
     gfx.drawCard(6, 39, 116, 48, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
@@ -124,13 +126,37 @@ void NetworkApp::renderPage1(RenderEngine& gfx) {
     }
 
     // Footer at y=147
-    gfx.drawTextCentered(64, 147, "< Page 2 of 2 >", COLOR_TEXT_MUTED, 1);
+    gfx.drawTextCentered(64, 147, "< Page 2 of 3 >", COLOR_TEXT_MUTED, 1);
+}
+
+void NetworkApp::renderPage2(RenderEngine& gfx) {
+    TelemetryData telem = SharedData::getInstance().getData();
+    gfx.drawHeader("RESET WI-FI (3/3)", 9);
+
+    // Card 1: Forget Network Warning (x=6, y=39, w=116, h=48)
+    gfx.drawCard(6, 39, 116, 48, COLOR_SLATE_MID, COLOR_NEON_RED);
+    gfx.drawText(12, 44, "FORGET SAVED WI-FI", COLOR_NEON_RED, 1);
+    gfx.drawText(12, 56, "Press OK to erase", COLOR_TEXT_LIGHT, 1);
+    gfx.drawText(12, 68, "SSID & Passwords", COLOR_TEXT_MUTED, 1);
+
+    // Card 2: Hotspot Restore Target (x=6, y=89, w=116, h=48)
+    gfx.drawCard(6, 89, 116, 48, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
+    gfx.drawText(12, 94, "HOTSPOT FALLBACK", COLOR_NEON_PURPLE, 1);
+    gfx.drawText(12, 106, "SSID: ORBIT-Setup", COLOR_TEXT_LIGHT, 1);
+    gfx.drawText(12, 118, "IP:   192.168.4.1", COLOR_NEON_CYAN, 1);
+
+    // Footer at y=147
+    gfx.drawTextCentered(64, 147, "OK:Confirm Forget", COLOR_NEON_AMBER, 1);
 }
 
 bool NetworkApp::onButtonEvent(const ButtonEvent& evt) {
     if (evt.type == BUTTON_CLICK) {
-        if (evt.button == BTN_ID_RIGHT || evt.button == BTN_ID_LEFT) {
-            _currentPage = (_currentPage == 0) ? 1 : 0;
+        if (evt.button == BTN_ID_RIGHT) {
+            _currentPage = (_currentPage + 1) % _maxPages;
+            return true;
+        }
+        if (evt.button == BTN_ID_LEFT) {
+            _currentPage = (_currentPage == 0) ? (_maxPages - 1) : (_currentPage - 1);
             return true;
         }
 
@@ -143,9 +169,16 @@ bool NetworkApp::onButtonEvent(const ButtonEvent& evt) {
                     WifiManager::getInstance().init();
                     RenderEngine::getInstance().showToast("WI-FI", "Attempting Reconnect", COLOR_NEON_CYAN, 2500);
                 }
-            } else {
+            } else if (_currentPage == 1) {
                 RenderEngine::getInstance().showToast("OTA FLASHER", "Open orbit.local/update", COLOR_NEON_CYAN, 3000);
+            } else if (_currentPage == 2) {
+                WifiManager::getInstance().forgetWifi();
             }
+            return true;
+        }
+    } else if (evt.type == BUTTON_HOLD_1S || evt.type == BUTTON_HOLD_3S) {
+        if (evt.button == BTN_ID_ENTER || evt.button == BTN_ID_SELECT) {
+            WifiManager::getInstance().forgetWifi();
             return true;
         }
     }
