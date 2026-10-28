@@ -3842,41 +3842,53 @@ create policy "Allow all delete" on public.recordings for delete using (true);
       if (wifiList) wifiList.innerHTML = '<div style="color:var(--muted); font-size:0.85rem; padding:16px; text-align:center;">Scanning wireless networks...</div>';
       try {
         await fetch('/api/wifi/scan', { method: 'POST' });
-        setTimeout(async () => {
-          const res = await fetch('/api/wifi/scan');
-          const data = await res.json();
-          if (btnScan) btnScan.disabled = false;
-          if (!wifiList) return;
+        let attempts = 0;
+        const pollScan = async () => {
+          attempts++;
+          try {
+            const res = await fetch('/api/wifi/scan');
+            const data = await res.json();
+            if (data.scanning && attempts < 8) {
+              setTimeout(pollScan, 800);
+              return;
+            }
+            if (btnScan) btnScan.disabled = false;
+            if (!wifiList) return;
 
-          if (!data.networks || data.networks.length === 0) {
-            wifiList.innerHTML = '<div style="color:var(--muted); font-size:0.85rem; padding:16px; text-align:center;">No networks found. Rescan or enter SSID manually.</div>';
-            return;
-          }
+            if (!data.networks || data.networks.length === 0) {
+              wifiList.innerHTML = '<div style="color:var(--muted); font-size:0.85rem; padding:16px; text-align:center;">No networks found. Rescan or enter SSID manually below.</div>';
+              return;
+            }
 
-          wifiList.innerHTML = '';
-          data.networks.forEach(net => {
-            const item = document.createElement('div');
-            item.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.06); cursor:pointer; transition:background 0.15s;';
-            item.innerHTML = `
-              <div style="font-weight:600; font-size:0.9rem; color:#fff;">
-                ${net.secure ? '🔒' : '🔓'} ${net.ssid}
-              </div>
-              <div style="font-size:0.75rem; color:var(--muted); font-family:monospace;">
-                ${net.rssi} dBm
-              </div>
-            `;
-            item.addEventListener('mouseenter', () => item.style.background = 'rgba(0,255,255,0.1)');
-            item.addEventListener('mouseleave', () => item.style.background = 'transparent');
-            item.addEventListener('click', () => {
-              if (ssidInput) ssidInput.value = net.ssid;
-              if (passInput) passInput.focus();
+            wifiList.innerHTML = '';
+            data.networks.forEach(net => {
+              const item = document.createElement('div');
+              item.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.06); cursor:pointer; transition:background 0.15s;';
+              item.innerHTML = `
+                <div style="font-weight:600; font-size:0.9rem; color:#fff;">
+                  ${net.secure ? '🔒' : '🔓'} ${net.ssid}
+                </div>
+                <div style="font-size:0.75rem; color:var(--muted); font-family:monospace;">
+                  ${net.rssi} dBm
+                </div>
+              `;
+              item.addEventListener('mouseenter', () => item.style.background = 'rgba(0,255,255,0.1)');
+              item.addEventListener('mouseleave', () => item.style.background = 'transparent');
+              item.addEventListener('click', () => {
+                if (ssidInput) ssidInput.value = net.ssid;
+                if (passInput) passInput.focus();
+              });
+              wifiList.appendChild(item);
             });
-            wifiList.appendChild(item);
-          });
-        }, 1200);
+          } catch (e) {
+            if (btnScan) btnScan.disabled = false;
+            if (wifiList) wifiList.innerHTML = '<div style="color:var(--muted); font-size:0.85rem; padding:16px; text-align:center;">Error reading scan results.</div>';
+          }
+        };
+        setTimeout(pollScan, 1000);
       } catch (err) {
         if (btnScan) btnScan.disabled = false;
-        if (wifiList) wifiList.innerHTML = '<div style="color:var(--muted); font-size:0.85rem; padding:16px; text-align:center;">Failed to scan networks.</div>';
+        if (wifiList) wifiList.innerHTML = '<div style="color:var(--muted); font-size:0.85rem; padding:16px; text-align:center;">Failed to start scan.</div>';
       }
     };
 
