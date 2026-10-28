@@ -9,6 +9,14 @@
 // ORBIT v2 — INMP441 I2S Microphone, 16-Band FFT & Voice Memo Recorder
 // ==============================================================================
 
+enum MemoMode {
+    MEMO_MODE_VOICE_TO_TEXT = 0, // Transcribe & Web Copy
+    MEMO_MODE_ASK_AI,            // Voice Question -> AI Answer on Screen
+    MEMO_MODE_AUDIO_WAV,         // Standard 16kHz PCM WAV Audio
+    MEMO_MODE_AI_TASKS,          // AI Action Item & Task Extractor
+    MEMO_MODE_COUNT
+};
+
 class MicSensor {
 public:
     static MicSensor& getInstance() {
@@ -32,6 +40,12 @@ public:
     uint32_t getRecordingDurationMs() const;
     const char* getCurrentRecordingPath() const { return _currentMemoPath; }
 
+    // Memo Mode (Multiple Options)
+    void setMemoMode(MemoMode mode) { _memoMode = mode; }
+    MemoMode getMemoMode() const { return _memoMode; }
+    const char* getMemoModeName() const;
+    const char* getMemoModeTag() const;
+
 private:
     MicSensor();
     ~MicSensor() = default;
@@ -48,6 +62,7 @@ private:
 
     // Voice memo recording state
     bool _isRecording = false;
+    MemoMode _memoMode = MEMO_MODE_VOICE_TO_TEXT;
     File _wavFile;
     char _currentMemoPath[64];
     uint32_t _recordStartTime = 0;

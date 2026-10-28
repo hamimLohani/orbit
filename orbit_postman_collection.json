@@ -1,0 +1,416 @@
+{
+  "info": {
+    "_postman_id": "orbit-v2-api-collection",
+    "name": "ORBIT v2 ESP32-S3 REST & WebSocket API",
+    "description": "Complete REST API and WebSocket collection for ORBIT v2 Ambient Desktop Companion.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://orbit.local",
+      "type": "string"
+    },
+    {
+      "key": "wsUrl",
+      "value": "ws://orbit.local/ws",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Catalog & Documentation",
+      "item": [
+        {
+          "name": "GET API Catalog",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api",
+              "host": ["{{baseUrl}}"],
+              "path": ["api"]
+            },
+            "description": "Returns a JSON map of all available REST endpoints on the device."
+          }
+        },
+        {
+          "name": "GET Configured API Keys Status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/keys",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "keys"]
+            },
+            "description": "Returns status of cloud API keys configured in secrets.h (OpenAI, Gemini, ElevenLabs, OpenWeather) and safe provisioning for companion."
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Telemetry & Apps",
+      "item": [
+        {
+          "name": "GET Live Telemetry",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/telemetry",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "telemetry"]
+            },
+            "description": "Fetches current temperature, humidity, noise level, RSSI, uptime, and heap."
+          }
+        },
+        {
+          "name": "GET Registered Apps",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/apps",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "apps"]
+            },
+            "description": "Returns an array of all active carousel applications registered on ORBIT."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Voice Memos & Audio",
+      "item": [
+        {
+          "name": "GET Memos List",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/recordings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "recordings"]
+            },
+            "description": "Lists all WAV voice memo filenames saved on the MicroSD card."
+          }
+        },
+        {
+          "name": "GET Download Audio WAV",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/download?file=memo_0001.wav",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "download"],
+              "query": [
+                {
+                  "key": "file",
+                  "value": "memo_0001.wav",
+                  "description": "Filename of the audio recording"
+                }
+              ]
+            },
+            "description": "Streams raw 16kHz Mono PCM WAV audio from MicroSD card."
+          }
+        },
+        {
+          "name": "POST Delete Audio Memo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "file",
+                  "value": "memo_0001.wav",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/recordings/delete",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "recordings", "delete"]
+            },
+            "description": "Deletes specified recording file from the MicroSD card."
+          }
+        },
+        {
+          "name": "GET Supabase Config",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/supabase/config",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "supabase", "config"]
+            },
+            "description": "Returns Supabase Project URL, Storage bucket, and PostgreSQL table name config."
+          }
+        },
+        {
+          "name": "POST Prepare Supabase Sync",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/supabase/sync?file=memo_0001.wav",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "supabase", "sync"],
+              "query": [
+                {
+                  "key": "file",
+                  "value": "memo_0001.wav"
+                }
+              ]
+            },
+            "description": "Validates audio file and returns telemetry payload ready for direct upload to Supabase Storage & PostgreSQL."
+          }
+        },
+        {
+          "name": "GET Firebase Config",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/firebase/config",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "firebase", "config"]
+            },
+            "description": "Returns Firebase Project ID, Storage bucket, and Cloud Firestore collection config."
+          }
+        },
+        {
+          "name": "POST Prepare Firebase Sync",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/firebase/sync?file=memo_0001.wav",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "firebase", "sync"],
+              "query": [
+                {
+                  "key": "file",
+                  "value": "memo_0001.wav"
+                }
+              ]
+            },
+            "description": "Validates audio file and returns telemetry payload ready for direct upload to Firebase."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Ambient AI & Screen Overlay",
+      "item": [
+        {
+          "name": "POST Show AI Answer on Screen",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "question",
+                  "value": "What is today's lunar phase and ISS status?",
+                  "type": "text"
+                },
+                {
+                  "key": "answer",
+                  "value": "Lunar illumination is 68%. ISS orbits at 408 km, completing 16 orbits daily at 27,600 km/h.",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/answer",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ai", "answer"]
+            },
+            "description": "Word-wraps and displays an AI response modal overlay directly on the 128x160 TFT screen with UP/DOWN scrolling."
+          }
+        },
+        {
+          "name": "GET AI Answer Status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/answer",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ai", "answer"]
+            },
+            "description": "Returns whether the AI answer modal is currently active on screen, along with the question and answer text."
+          }
+        },
+        {
+          "name": "POST Clear / Dismiss AI Answer",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/clear",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ai", "clear"]
+            },
+            "description": "Dismisses the AI answer overlay on the device display."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Wi-Fi & Network Provisioning",
+      "item": [
+        {
+          "name": "GET Wi-Fi Status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/wifi/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "wifi", "status"]
+            },
+            "description": "Returns current Wi-Fi SSID, IP, RSSI, SoftAP state, and connection status."
+          }
+        },
+        {
+          "name": "GET Wi-Fi Scan Results",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/wifi/scan",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "wifi", "scan"]
+            },
+            "description": "Returns cached or current nearby Wi-Fi network scan results."
+          }
+        },
+        {
+          "name": "POST Trigger Wi-Fi Scan",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/wifi/scan",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "wifi", "scan"]
+            },
+            "description": "Triggers an asynchronous scan of nearby 2.4GHz Wi-Fi networks."
+          }
+        },
+        {
+          "name": "POST Connect to Wi-Fi",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "ssid",
+                  "value": "MyHomeNetwork",
+                  "type": "text"
+                },
+                {
+                  "key": "pass",
+                  "value": "SuperSecretPassword",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/wifi/connect",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "wifi", "connect"]
+            },
+            "description": "Transmits credentials and initiates connection to a new Wi-Fi network."
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. System Hardware & Storage",
+      "item": [
+        {
+          "name": "GET System Hardware Diagnostics",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/system/info",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "system", "info"]
+            },
+            "description": "Comprehensive report of silicon (ESP32-S3 cores, revision), Flash ROM, PSRAM, Heap, LittleFS, MicroSD, and Network."
+          }
+        },
+        {
+          "name": "POST File Upload to SD / LittleFS",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "description": "File payload"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/files/upload?target=sd&path=/orbit_memos",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "files", "upload"],
+              "query": [
+                {
+                  "key": "target",
+                  "value": "sd",
+                  "description": "'sd' for MicroSD or 'lfs' for LittleFS flash"
+                },
+                {
+                  "key": "path",
+                  "value": "/orbit_memos",
+                  "description": "Destination directory"
+                }
+              ]
+            },
+            "description": "Uploads files over Wi-Fi directly to MicroSD or LittleFS with SPI mutex locking."
+          }
+        },
+        {
+          "name": "POST System Reboot",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/system/reboot",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "system", "reboot"]
+            },
+            "description": "Safely reboots the ESP32-S3 microcontroller."
+          }
+        },
+        {
+          "name": "GET OTA Status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/ota/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ota", "status"]
+            },
+            "description": "Returns progress and status of ongoing OTA firmware updates."
+          }
+        }
+      ]
+    }
+  ]
+}
+

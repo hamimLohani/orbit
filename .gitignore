@@ -1,0 +1,81 @@
+# ==============================================================================
+# ORBIT v2 — Git Ignore Configuration
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. API Keys, Credentials & Secrets
+# ------------------------------------------------------------------------------
+*api_key*
+*apikey*
+secrets.h
+include/secrets.h
+api_keys.h
+include/api_keys.h
+config_secrets.h
+include/config_secrets.h
+*.env
+.env
+.env.*
+*.pem
+*.key
+*.cert
+credentials.json
+tokens.json
+service-account*.json
+
+# ------------------------------------------------------------------------------
+# 2. Build Outputs & Compilations (PlatformIO / Arduino-CLI)
+# ------------------------------------------------------------------------------
+build/
+.pio/
+.pioenvs/
+.piolibdeps/
+*.bin
+*.elf
+*.hex
+*.o
+*.d
+*.a
+*.srec
+*.map
+*.lst
+*.asm
+*.tmp
+arduino-cli.yaml
+
+# ------------------------------------------------------------------------------
+# 3. Editor & IDE Settings
+# ------------------------------------------------------------------------------
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+.clangd/
+.ccls-cache/
+
+# ------------------------------------------------------------------------------
+# 4. Operating System Artifacts
+# ------------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ------------------------------------------------------------------------------
+# 5. Local Logs, Captures & Node Dependencies
+# ------------------------------------------------------------------------------
+*.log
+core.*
+/tmp/
+recordings/memos/*.wav
+node_modules/
+package-lock.json
+

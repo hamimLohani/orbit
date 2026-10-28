@@ -190,3 +190,23 @@ void MicSensor::updateWavHeader(File& file, uint32_t totalAudioBytes) {
     file.seek(40);
     file.write((uint8_t*)&totalAudioBytes, 4);
 }
+
+const char* MicSensor::getMemoModeName() const {
+    switch (_memoMode) {
+        case MEMO_MODE_VOICE_TO_TEXT: return "VOICE TO TEXT";
+        case MEMO_MODE_ASK_AI:        return "ASK AI (WIFI)";
+        case MEMO_MODE_AUDIO_WAV:     return "AUDIO WAV";
+        case MEMO_MODE_AI_TASKS:      return "AI TASKS";
+        default:                      return "VOICE TO TEXT";
+    }
+}
+
+const char* MicSensor::getMemoModeTag() const {
+    switch (_memoMode) {
+        case MEMO_MODE_VOICE_TO_TEXT: return "Transcribe & Web Copy";
+        case MEMO_MODE_ASK_AI:        return "Voice Query -> AI Screen";
+        case MEMO_MODE_AUDIO_WAV:     return "16kHz PCM to SD";
+        case MEMO_MODE_AI_TASKS:      return "Notes & Action Items";
+        default:                      return "";
+    }
+}

@@ -40,6 +40,17 @@ struct TelemetryData {
     uint8_t rgbMode = 0;        // Off
     uint32_t rgbColor = 0x000000;
     uint8_t brightness = 80;    // 0-100%
+
+    // Outdoor Live Weather (OpenWeatherMap Sync)
+    bool weatherValid = false;
+    float outdoorTemp = 21.5f;
+    float outdoorFeelsLike = 21.0f;
+    float outdoorHumidity = 58.0f;
+    float windSpeedMps = 3.6f;
+    uint16_t pressureHpa = 1014;
+    char weatherCondition[20] = "Clear";
+    char weatherCity[20] = "London";
+    char weatherDesc[32] = "Clear Sky";
 };
 
 class SharedData {
@@ -56,6 +67,7 @@ public:
 
     // Safe field setters
     void setClimate(float temp, float hum);
+    void setWeather(float temp, float feelsLike, float hum, float windSpeed, uint16_t pressure, const char* condition, const char* city, const char* desc = nullptr);
     void setAudio(float rms, float peak, float db, const uint8_t* bins);
     void setNoiseDistraction(bool alert);
     void setTime(const char* time, const char* date, bool isNight, bool synced = true);

@@ -21,6 +21,14 @@ struct ToastMessage {
     uint32_t expiryTime;
 };
 
+struct AiAnswerOverlay {
+    bool active = false;
+    char title[24] = "AI ANSWER";
+    char question[48];
+    char answer[384];
+    int16_t scrollOffset = 0;
+};
+
 class RenderEngine {
 public:
     static RenderEngine& getInstance() {
@@ -67,6 +75,17 @@ public:
     void showToast(const char* title, const char* msg, uint16_t color = COLOR_NEON_CYAN, uint32_t durationMs = 3000);
     void renderToastOverlay();
 
+    // Text & AI Answer Screen Overlay (Modal dialog with scrolling)
+    void showTextOverlay(const char* title, const char* subtitle, const char* text);
+    void showAiAnswer(const char* question, const char* answer);
+    void hideAiAnswer();
+    bool isAiAnswerActive() const { return _aiAnswer.active; }
+    void scrollAiAnswer(int8_t dir);
+    void renderAiAnswerOverlay();
+    const char* getOverlayTitle() const { return _aiAnswer.title; }
+    const char* getAiQuestion() const { return _aiAnswer.question; }
+    const char* getAiAnswer() const { return _aiAnswer.answer; }
+
     // Flush the double-buffered frame to the physical display in one SPI transaction
     void flush();
 
@@ -83,6 +102,7 @@ private:
     Adafruit_ST7735 _tft;
     GFXcanvas16 _canvas;
     ToastMessage _toast;
+    AiAnswerOverlay _aiAnswer;
     uint8_t _currentBrightness = 80;
     static SemaphoreHandle_t _spiMutex;
 };

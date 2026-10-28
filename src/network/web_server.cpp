@@ -139,6 +139,198 @@ void WebServer::setupRoutes() {
 }
 
 void WebServer::setupRestApi() {
+    // 0. API Root Catalog & Documentation (GET /api)
+    _server.on("/api", HTTP_GET, [](AsyncWebServerRequest* request) {
+        JsonDocument doc;
+        doc["name"] = "ORBIT v2 Ambient Companion OS";
+        doc["version"] = ORBIT_VERSION_STR;
+        JsonObject endpoints = doc["endpoints"].to<JsonObject>();
+        endpoints["telemetry"]    = "GET /api/telemetry";
+        endpoints["apps"]         = "GET /api/apps";
+        endpoints["recordings"]   = "GET /api/recordings";
+        endpoints["download"]     = "GET /api/download?file=<name>";
+        endpoints["delete_memo"]  = "POST /api/recordings/delete?file=<name>";
+        endpoints["wifi_scan"]    = "GET /api/wifi/scan";
+        endpoints["wifi_status"]  = "GET /api/wifi/status";
+        endpoints["wifi_connect"] = "POST /api/wifi/connect";
+        endpoints["system_info"]  = "GET /api/system/info";
+        endpoints["system_reboot"]= "POST /api/system/reboot";
+        endpoints["files_upload"] = "POST /api/files/upload?target=[sd|lfs]&path=<path>";
+        endpoints["ota_status"]   = "GET /api/ota/status";
+        endpoints["ota_update"]      = "POST /update";
+        endpoints["ai_answer"]       = "POST /api/ai/answer";
+        endpoints["ai_clear"]        = "POST /api/ai/clear";
+        endpoints["keys"]            = "GET /api/keys";
+        endpoints["supabase_config"] = "GET /api/supabase/config";
+        endpoints["supabase_sync"]   = "POST /api/supabase/sync?file=<name>";
+        endpoints["firebase_config"] = "GET /api/firebase/config";
+        endpoints["firebase_sync"]   = "POST /api/firebase/sync?file=<name>";
+
+        String res;
+        serializeJson(doc, res);
+        request->send(200, "application/json", res);
+    });
+
+    // 0b. Cloud Keys & Service Provisioning API (GET /api/keys)
+    _server.on("/api/keys", HTTP_GET, [](AsyncWebServerRequest* request) {
+        JsonDocument doc;
+        doc["openai_configured"]      = (strlen(DEFAULT_OPENAI_API_KEY) > 0);
+        doc["gemini_configured"]      = (strlen(DEFAULT_GEMINI_API_KEY) > 0);
+        doc["elevenlabs_configured"]  = (strlen(DEFAULT_ELEVENLABS_API_KEY) > 0);
+        doc["weather_configured"]     = (strlen(DEFAULT_OPENWEATHER_API_KEY) > 0);
+        doc["supabase_configured"]    = (strlen(DEFAULT_SUPABASE_URL) > 0 && strlen(DEFAULT_SUPABASE_ANON_KEY) > 0);
+        doc["firebase_configured"]    = (strlen(DEFAULT_FIREBASE_PROJECT_ID) > 0 && strlen(DEFAULT_FIREBASE_API_KEY) > 0);
+
+        // Expose secrets configured at compile-time to local companion
+        doc["openai_key"]             = DEFAULT_OPENAI_API_KEY;
+        doc["gemini_key"]             = DEFAULT_GEMINI_API_KEY;
+        doc["elevenlabs_key"]         = DEFAULT_ELEVENLABS_API_KEY;
+        doc["weather_key"]            = DEFAULT_OPENWEATHER_API_KEY;
+        doc["weather_city"]           = DEFAULT_WEATHER_CITY;
+        doc["default_ai_engine"]      = ACTIVE_AI_ENGINE;
+
+        // Supabase Cloud Database & Storage Credentials (100% Free Tier, No CC)
+        doc["supabase_url"]           = DEFAULT_SUPABASE_URL;
+        doc["supabase_anon_key"]      = DEFAULT_SUPABASE_ANON_KEY;
+        doc["supabase_storage_bucket"]= DEFAULT_SUPABASE_STORAGE_BUCKET;
+        doc["supabase_table"]         = DEFAULT_SUPABASE_TABLE;
+
+        // Firebase Cloud Database & Storage Credentials
+        doc["firebase_project_id"]    = DEFAULT_FIREBASE_PROJECT_ID;
+        doc["firebase_api_key"]       = DEFAULT_FIREBASE_API_KEY;
+        doc["firebase_storage_bucket"]= DEFAULT_FIREBASE_STORAGE_BUCKET;
+        doc["firebase_collection"]    = DEFAULT_FIREBASE_COLLECTION;
+        doc["firebase_rtdb_url"]      = DEFAULT_FIREBASE_RTDB_URL;
+
+        String res;
+        serializeJson(doc, res);
+        request->send(200, "application/json", res);
+    });
+
+    // 0c. Supabase Configuration API (GET /api/supabase/config)
+    _server.on("/api/supabase/config", HTTP_GET, [](AsyncWebServerRequest* request) {
+        JsonDocument doc;
+        doc["configured"]     = (strlen(DEFAULT_SUPABASE_URL) > 0 && strlen(DEFAULT_SUPABASE_ANON_KEY) > 0);
+        doc["url"]            = DEFAULT_SUPABASE_URL;
+        doc["anon_key"]       = DEFAULT_SUPABASE_ANON_KEY;
+        doc["storage_bucket"] = DEFAULT_SUPABASE_STORAGE_BUCKET;
+        doc["table"]          = DEFAULT_SUPABASE_TABLE;
+
+        String res;
+        serializeJson(doc, res);
+        request->send(200, "application/json", res);
+    });
+
+    // 0d. Prepare Recording for Supabase Direct Upload (POST /api/supabase/sync)
+    _server.on("/api/supabase/sync", HTTP_POST, [](AsyncWebServerRequest* request) {
+        if (!request->hasParam("file", true) && !request->hasParam("file")) {
+            request->send(400, "application/json", "{\"error\":\"Missing file parameter\"}");
+            return;
+        }
+        String filename = request->hasParam("file", true) ? request->getParam("file", true)->value() : request->getParam("file")->value();
+        String fullPath = String(SD_PATH_MEMOS) + "/" + filename;
+
+        bool exists = false;
+        size_t fileSize = 0;
+        SemaphoreHandle_t mutex = RenderEngine::getSpiMutex();
+        if (xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+            digitalWrite(PIN_TFT_CS, HIGH);
+            if (SD.exists(fullPath.c_str())) {
+                File f = SD.open(fullPath.c_str(), FILE_READ);
+                if (f) {
+                    fileSize = f.size();
+                    f.close();
+                    exists = true;
+                }
+            }
+            xSemaphoreGive(mutex);
+        }
+
+        if (!exists) {
+            request->send(404, "application/json", "{\"error\":\"File not found on SD card\"}");
+            return;
+        }
+
+        TelemetryData telem = SharedData::getInstance().getData();
+        JsonDocument doc;
+        doc["status"]       = "ready";
+        doc["filename"]     = filename;
+        doc["size_bytes"]   = fileSize;
+        doc["download_url"] = "/api/download?file=" + filename;
+        doc["temp_c"]       = telem.temperature;
+        doc["humidity_pct"] = telem.humidity;
+        doc["noise_db"]     = telem.micDb;
+        doc["timestamp_ms"] = millis();
+
+        String res;
+        serializeJson(doc, res);
+        request->send(200, "application/json", res);
+    });
+
+    // 0c. Firebase Configuration API (GET /api/firebase/config)
+    _server.on("/api/firebase/config", HTTP_GET, [](AsyncWebServerRequest* request) {
+        JsonDocument doc;
+        doc["configured"]     = (strlen(DEFAULT_FIREBASE_PROJECT_ID) > 0 && strlen(DEFAULT_FIREBASE_API_KEY) > 0);
+        doc["project_id"]     = DEFAULT_FIREBASE_PROJECT_ID;
+        doc["api_key"]        = DEFAULT_FIREBASE_API_KEY;
+        doc["storage_bucket"] = DEFAULT_FIREBASE_STORAGE_BUCKET;
+        doc["collection"]     = DEFAULT_FIREBASE_COLLECTION;
+        doc["rtdb_url"]       = DEFAULT_FIREBASE_RTDB_URL;
+
+        String res;
+        serializeJson(doc, res);
+        request->send(200, "application/json", res);
+    });
+
+    // 0d. Prepare Recording for Firebase Database Direct Upload (POST /api/firebase/sync)
+    _server.on("/api/firebase/sync", HTTP_POST, [](AsyncWebServerRequest* request) {
+        if (!request->hasParam("file", true) && !request->hasParam("file")) {
+            request->send(400, "application/json", "{\"error\":\"Missing file parameter\"}");
+            return;
+        }
+        String filename = request->hasParam("file", true) ? request->getParam("file", true)->value() : request->getParam("file")->value();
+        String fullPath = String(SD_PATH_MEMOS) + "/" + filename;
+
+        bool exists = false;
+        size_t fileSize = 0;
+        SemaphoreHandle_t mutex = RenderEngine::getSpiMutex();
+        if (xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+            digitalWrite(PIN_TFT_CS, HIGH);
+            if (SD.exists(fullPath.c_str())) {
+                File f = SD.open(fullPath.c_str(), FILE_READ);
+                if (f) {
+                    exists = true;
+                    fileSize = f.size();
+                    f.close();
+                }
+            }
+            xSemaphoreGive(mutex);
+        }
+
+        if (!exists) {
+            request->send(404, "application/json", "{\"error\":\"Recording file not found on SD card\"}");
+            return;
+        }
+
+        TelemetryData telem = SharedData::getInstance().getData();
+        JsonDocument doc;
+        doc["status"] = "ready_for_sync";
+        doc["filename"] = filename;
+        doc["file_size_bytes"] = fileSize;
+        doc["audio_download_url"] = String("/api/download?file=") + filename;
+        doc["duration_sec"] = (fileSize > 44) ? ((fileSize - 44) / 32000) : 0; // 16kHz 16-bit mono = 32000 B/s
+        doc["device_id"] = "ORBIT-ESP32-S3";
+        doc["temperature_c"] = telem.temperature;
+        doc["humidity_pct"] = telem.humidity;
+        doc["noise_db"] = telem.micDb;
+        doc["timestamp"] = telem.timeStr;
+        doc["date"] = telem.dateStr;
+
+        String res;
+        serializeJson(doc, res);
+        request->send(200, "application/json", res);
+    });
+
     // 1. Telemetry API
     _server.on("/api/telemetry", HTTP_GET, [](AsyncWebServerRequest* request) {
         TelemetryData telem = SharedData::getInstance().getData();
@@ -150,6 +342,29 @@ void WebServer::setupRestApi() {
         doc["uptime"] = telem.uptimeSec;
         doc["heap"] = telem.freeHeap;
         doc["active_app"] = telem.activeAppId;
+
+        String res;
+        serializeJson(doc, res);
+        request->send(200, "application/json", res);
+    });
+
+    // 1b. Live Weather API (GET /api/weather, POST /api/weather)
+    _server.on("/api/weather", HTTP_GET, [](AsyncWebServerRequest* request) {
+        TelemetryData telem = SharedData::getInstance().getData();
+        JsonDocument doc;
+        doc["valid"]        = telem.weatherValid;
+        doc["outdoor_temp"] = telem.outdoorTemp;
+        doc["feels_like"]   = telem.outdoorFeelsLike;
+        doc["outdoor_hum"]  = telem.outdoorHumidity;
+        doc["wind_speed"]   = telem.windSpeedMps;
+        doc["pressure_hpa"] = telem.pressureHpa;
+        doc["condition"]    = telem.weatherCondition;
+        doc["city"]         = telem.weatherCity;
+        doc["description"]  = telem.weatherDesc;
+        doc["indoor_temp"]  = telem.temperature;
+        doc["indoor_hum"]   = telem.humidity;
+        doc["delta_temp"]   = round((telem.temperature - telem.outdoorTemp) * 10.0f) / 10.0f;
+        doc["delta_hum"]    = round((telem.humidity - telem.outdoorHumidity) * 10.0f) / 10.0f;
 
         String res;
         serializeJson(doc, res);
@@ -208,6 +423,32 @@ void WebServer::setupRestApi() {
             xSemaphoreGive(mutex);
         }
         request->send(404, "text/plain", "File not found");
+    });
+
+    // 4b. Delete Recording Audio (.wav)
+    _server.on("/api/recordings/delete", HTTP_POST, [](AsyncWebServerRequest* request) {
+        if (!request->hasParam("file", true) && !request->hasParam("file")) {
+            request->send(400, "application/json", "{\"error\":\"Missing file parameter\"}");
+            return;
+        }
+        String filename = request->hasParam("file", true) ? request->getParam("file", true)->value() : request->getParam("file")->value();
+        String fullPath = String(SD_PATH_MEMOS) + "/" + filename;
+
+        bool deleted = false;
+        SemaphoreHandle_t mutex = RenderEngine::getSpiMutex();
+        if (xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+            digitalWrite(PIN_TFT_CS, HIGH);
+            if (SD.exists(fullPath.c_str())) {
+                deleted = SD.remove(fullPath.c_str());
+            }
+            xSemaphoreGive(mutex);
+        }
+
+        if (deleted) {
+            request->send(200, "application/json", "{\"status\":\"success\",\"message\":\"Recording deleted\"}");
+        } else {
+            request->send(404, "application/json", "{\"error\":\"File not found or failed to delete\"}");
+        }
     });
 
     // 5. Wi-Fi Scan Results API (GET /api/wifi/scan)
@@ -447,5 +688,36 @@ void WebServer::setupRestApi() {
         String res;
         serializeJson(doc, res);
         request->send(200, "application/json", res);
+    });
+
+    // 14. Show AI Answer on Device Screen (POST /api/ai/answer)
+    _server.on("/api/ai/answer", HTTP_POST, [](AsyncWebServerRequest* request) {
+        String question = request->hasParam("question", true) ? request->getParam("question", true)->value() : "AI Question";
+        String answer = request->hasParam("answer", true) ? request->getParam("answer", true)->value() : "";
+        if (answer.isEmpty() && request->hasParam("answer")) {
+            answer = request->getParam("answer")->value();
+        }
+        if (answer.isEmpty()) {
+            request->send(400, "application/json", "{\"error\":\"Missing answer parameter\"}");
+            return;
+        }
+        RenderEngine::getInstance().showAiAnswer(question.c_str(), answer.c_str());
+        request->send(200, "application/json", "{\"status\":\"success\",\"message\":\"AI answer displayed on device\"}");
+    });
+
+    // 15. Get / Clear AI Answer (GET /api/ai/answer, POST /api/ai/clear)
+    _server.on("/api/ai/answer", HTTP_GET, [](AsyncWebServerRequest* request) {
+        JsonDocument doc;
+        doc["active"] = RenderEngine::getInstance().isAiAnswerActive();
+        doc["question"] = RenderEngine::getInstance().getAiQuestion();
+        doc["answer"] = RenderEngine::getInstance().getAiAnswer();
+        String res;
+        serializeJson(doc, res);
+        request->send(200, "application/json", res);
+    });
+
+    _server.on("/api/ai/clear", HTTP_POST, [](AsyncWebServerRequest* request) {
+        RenderEngine::getInstance().hideAiAnswer();
+        request->send(200, "application/json", "{\"status\":\"success\",\"message\":\"AI answer dismissed\"}");
     });
 }

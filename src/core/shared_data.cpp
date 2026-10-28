@@ -36,6 +36,30 @@ void SharedData::setClimate(float temp, float hum) {
     }
 }
 
+void SharedData::setWeather(float temp, float feelsLike, float hum, float windSpeed, uint16_t pressure, const char* condition, const char* city, const char* desc) {
+    if (_mutex && xSemaphoreTake(_mutex, pdMS_TO_TICKS(15)) == pdTRUE) {
+        _data.weatherValid = true;
+        _data.outdoorTemp = temp;
+        _data.outdoorFeelsLike = feelsLike;
+        _data.outdoorHumidity = hum;
+        _data.windSpeedMps = windSpeed;
+        _data.pressureHpa = pressure;
+        if (condition) {
+            strncpy(_data.weatherCondition, condition, sizeof(_data.weatherCondition) - 1);
+            _data.weatherCondition[sizeof(_data.weatherCondition) - 1] = '\0';
+        }
+        if (city) {
+            strncpy(_data.weatherCity, city, sizeof(_data.weatherCity) - 1);
+            _data.weatherCity[sizeof(_data.weatherCity) - 1] = '\0';
+        }
+        if (desc) {
+            strncpy(_data.weatherDesc, desc, sizeof(_data.weatherDesc) - 1);
+            _data.weatherDesc[sizeof(_data.weatherDesc) - 1] = '\0';
+        }
+        xSemaphoreGive(_mutex);
+    }
+}
+
 void SharedData::setAudio(float rms, float peak, float db, const uint8_t* bins) {
     if (_mutex && xSemaphoreTake(_mutex, pdMS_TO_TICKS(15)) == pdTRUE) {
         _data.micRms = rms;

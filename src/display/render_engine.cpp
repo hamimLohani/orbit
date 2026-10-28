@@ -233,3 +233,115 @@ void RenderEngine::renderToastOverlay() {
     drawText(8, 5, _toast.title, _toast.color, 1);
     drawText(8, 17, _toast.message, COLOR_TEXT_LIGHT, 1);
 }
+
+void RenderEngine::showTextOverlay(const char* title, const char* subtitle, const char* text) {
+    _aiAnswer.active = true;
+    _aiAnswer.scrollOffset = 0;
+    strncpy(_aiAnswer.title, (title && strlen(title) > 0) ? title : "TRANSCRIPT", sizeof(_aiAnswer.title) - 1);
+    _aiAnswer.title[sizeof(_aiAnswer.title) - 1] = '\0';
+    strncpy(_aiAnswer.question, (subtitle && strlen(subtitle) > 0) ? subtitle : "Voice Note", sizeof(_aiAnswer.question) - 1);
+    _aiAnswer.question[sizeof(_aiAnswer.question) - 1] = '\0';
+    strncpy(_aiAnswer.answer, (text && strlen(text) > 0) ? text : "No text transcribed.", sizeof(_aiAnswer.answer) - 1);
+    _aiAnswer.answer[sizeof(_aiAnswer.answer) - 1] = '\0';
+}
+
+void RenderEngine::showAiAnswer(const char* question, const char* answer) {
+    showTextOverlay("AI ANSWER", (question && strlen(question) > 0) ? question : "AI Prompt", answer);
+}
+
+void RenderEngine::hideAiAnswer() {
+    _aiAnswer.active = false;
+}
+
+void RenderEngine::scrollAiAnswer(int8_t dir) {
+    if (!_aiAnswer.active) return;
+    int16_t next = _aiAnswer.scrollOffset + dir;
+    if (next < 0) next = 0;
+    if (next > 30) next = 30;
+    _aiAnswer.scrollOffset = next;
+}
+
+void RenderEngine::renderAiAnswerOverlay() {
+    if (!_aiAnswer.active) return;
+
+    // Full screen backdrop
+    fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, COLOR_VOID_DARK);
+
+    // Frame border
+    drawRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, COLOR_NEON_CYAN);
+
+    // Header bar (y=0..18)
+    fillRect(1, 1, SCREEN_WIDTH - 2, 17, COLOR_SLATE_MID);
+    drawText(6, 5, _aiAnswer.title, COLOR_NEON_CYAN, 1);
+    drawTextRight(122, 5, "ORBIT", COLOR_NEON_MINT, 1);
+    drawFastHLine(1, 18, SCREEN_WIDTH - 2, COLOR_NEON_CYAN);
+
+    // Subtitle / Question Box (y=21..44, h=23, x=4, w=120)
+    drawCard(4, 21, 120, 23, COLOR_SLATE_DARK, COLOR_SLATE_BORDER);
+    char qBuf[22];
+    if (strcmp(_aiAnswer.title, "AI ANSWER") == 0) {
+        snprintf(qBuf, sizeof(qBuf), "Q: %s", _aiAnswer.question);
+    } else {
+        snprintf(qBuf, sizeof(qBuf), "> %s", _aiAnswer.question);
+    }
+    drawText(8, 27, qBuf, COLOR_NEON_AMBER, 1);
+
+    // Answer Card (y=47..143, h=96, x=4, w=120)
+    drawCard(4, 47, 120, 96, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
+
+    // Word-wrap lines for 18 characters maximum width
+    const int maxCharsPerLine = 18;
+    const int maxVisibleLines = 8;
+    const int lineH = 11;
+    const int startY = 52;
+
+    const char* p = _aiAnswer.answer;
+    int lineIndex = 0;
+    int renderedLines = 0;
+
+    while (*p && renderedLines < maxVisibleLines) {
+        char lineBuf[maxCharsPerLine + 1];
+        int len = 0;
+
+        // Skip leading spaces or empty newlines
+        while (*p == ' ' || *p == '\n') {
+            if (*p == '\n') { p++; break; }
+            p++;
+        }
+        if (!*p) break;
+
+        // Read up to maxCharsPerLine, tracking last space
+        int lastSpace = -1;
+        while (*p && *p != '\n' && len < maxCharsPerLine) {
+            lineBuf[len] = *p;
+            if (*p == ' ') lastSpace = len;
+            len++;
+            p++;
+        }
+
+        // Backtrack to last space if word exceeds line boundary
+        if (len == maxCharsPerLine && *p && *p != ' ' && *p != '\n' && lastSpace > 4) {
+            int rewind = len - lastSpace;
+            p -= rewind;
+            len = lastSpace;
+        }
+        lineBuf[len] = '\0';
+
+        if (lineIndex >= _aiAnswer.scrollOffset) {
+            drawText(8, startY + (renderedLines * lineH), lineBuf, COLOR_TEXT_LIGHT, 1);
+            renderedLines++;
+        }
+        lineIndex++;
+    }
+
+    // Scroll indicators if applicable
+    if (_aiAnswer.scrollOffset > 0) {
+        drawTextRight(120, 50, "^", COLOR_NEON_CYAN, 1);
+    }
+    if (*p) {
+        drawTextRight(120, 133, "v", COLOR_NEON_CYAN, 1);
+    }
+
+    // Bottom Navigation Hint (y=147)
+    drawTextCentered(64, 147, "UP/DN:Scroll  OK:Close", COLOR_TEXT_MUTED, 1);
+}

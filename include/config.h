@@ -91,8 +91,153 @@
 // ------------------------------------------------------------------------------
 // 6. Network & Web Services
 // ------------------------------------------------------------------------------
-#define DEFAULT_WIFI_SSID     "ORBIT_WiFi"
-#define DEFAULT_WIFI_PASS     ""
+#if __has_include("secrets.h")
+  #include "secrets.h"
+#endif
+
+#ifndef DEFAULT_WIFI_SSID
+  #ifdef WIFI_SSID
+    #define DEFAULT_WIFI_SSID   WIFI_SSID
+  #else
+    #define DEFAULT_WIFI_SSID   "ORBIT_WiFi"
+  #endif
+#endif
+
+#ifndef DEFAULT_WIFI_PASS
+  #ifdef WIFI_PASS
+    #define DEFAULT_WIFI_PASS   WIFI_PASS
+  #else
+    #define DEFAULT_WIFI_PASS   ""
+  #endif
+#endif
+
+// Voice & AI Cloud Secrets Fallbacks
+#ifndef DEFAULT_OPENAI_API_KEY
+  #ifdef OPENAI_API_KEY
+    #define DEFAULT_OPENAI_API_KEY OPENAI_API_KEY
+  #else
+    #define DEFAULT_OPENAI_API_KEY ""
+  #endif
+#endif
+
+#ifndef DEFAULT_GEMINI_API_KEY
+  #ifdef GEMINI_API_KEY
+    #define DEFAULT_GEMINI_API_KEY GEMINI_API_KEY
+  #else
+    #define DEFAULT_GEMINI_API_KEY ""
+  #endif
+#endif
+
+#ifndef DEFAULT_ELEVENLABS_API_KEY
+  #ifdef ELEVENLABS_API_KEY
+    #define DEFAULT_ELEVENLABS_API_KEY ELEVENLABS_API_KEY
+  #else
+    #define DEFAULT_ELEVENLABS_API_KEY ""
+  #endif
+#endif
+
+#ifndef DEFAULT_ANTHROPIC_API_KEY
+  #ifdef ANTHROPIC_API_KEY
+    #define DEFAULT_ANTHROPIC_API_KEY ANTHROPIC_API_KEY
+  #else
+    #define DEFAULT_ANTHROPIC_API_KEY ""
+  #endif
+#endif
+
+#ifndef DEFAULT_OPENWEATHER_API_KEY
+  #ifdef OPENWEATHER_API_KEY
+    #define DEFAULT_OPENWEATHER_API_KEY OPENWEATHER_API_KEY
+  #else
+    #define DEFAULT_OPENWEATHER_API_KEY ""
+  #endif
+#endif
+
+#ifndef DEFAULT_WEATHER_CITY
+  #define DEFAULT_WEATHER_CITY "London"
+#endif
+
+#ifndef ACTIVE_AI_ENGINE
+  #ifdef DEFAULT_AI_MODEL
+    #define ACTIVE_AI_ENGINE DEFAULT_AI_MODEL
+  #else
+    #define ACTIVE_AI_ENGINE "gemini"
+  #endif
+#endif
+
+// Supabase Cloud Database & Storage Fallbacks (100% Free Tier, No Credit Card)
+#ifndef DEFAULT_SUPABASE_URL
+  #ifdef SUPABASE_URL
+    #define DEFAULT_SUPABASE_URL SUPABASE_URL
+  #else
+    #define DEFAULT_SUPABASE_URL ""
+  #endif
+#endif
+
+#ifndef DEFAULT_SUPABASE_ANON_KEY
+  #ifdef SUPABASE_ANON_KEY
+    #define DEFAULT_SUPABASE_ANON_KEY SUPABASE_ANON_KEY
+  #else
+    #define DEFAULT_SUPABASE_ANON_KEY ""
+  #endif
+#endif
+
+#ifndef DEFAULT_SUPABASE_STORAGE_BUCKET
+  #ifdef SUPABASE_STORAGE_BUCKET
+    #define DEFAULT_SUPABASE_STORAGE_BUCKET SUPABASE_STORAGE_BUCKET
+  #else
+    #define DEFAULT_SUPABASE_STORAGE_BUCKET "orbit-recordings"
+  #endif
+#endif
+
+#ifndef DEFAULT_SUPABASE_TABLE
+  #ifdef SUPABASE_TABLE
+    #define DEFAULT_SUPABASE_TABLE SUPABASE_TABLE
+  #else
+    #define DEFAULT_SUPABASE_TABLE "recordings"
+  #endif
+#endif
+
+// Firebase Cloud Database & Storage Fallbacks
+#ifndef DEFAULT_FIREBASE_PROJECT_ID
+  #ifdef FIREBASE_PROJECT_ID
+    #define DEFAULT_FIREBASE_PROJECT_ID FIREBASE_PROJECT_ID
+  #else
+    #define DEFAULT_FIREBASE_PROJECT_ID ""
+  #endif
+#endif
+
+#ifndef DEFAULT_FIREBASE_API_KEY
+  #ifdef FIREBASE_API_KEY
+    #define DEFAULT_FIREBASE_API_KEY FIREBASE_API_KEY
+  #else
+    #define DEFAULT_FIREBASE_API_KEY ""
+  #endif
+#endif
+
+#ifndef DEFAULT_FIREBASE_STORAGE_BUCKET
+  #ifdef FIREBASE_STORAGE_BUCKET
+    #define DEFAULT_FIREBASE_STORAGE_BUCKET FIREBASE_STORAGE_BUCKET
+  #else
+    #define DEFAULT_FIREBASE_STORAGE_BUCKET ""
+  #endif
+#endif
+
+#ifndef DEFAULT_FIREBASE_COLLECTION
+  #ifdef FIREBASE_COLLECTION
+    #define DEFAULT_FIREBASE_COLLECTION FIREBASE_COLLECTION
+  #else
+    #define DEFAULT_FIREBASE_COLLECTION "orbit_recordings"
+  #endif
+#endif
+
+#ifndef DEFAULT_FIREBASE_RTDB_URL
+  #ifdef FIREBASE_RTDB_URL
+    #define DEFAULT_FIREBASE_RTDB_URL FIREBASE_RTDB_URL
+  #else
+    #define DEFAULT_FIREBASE_RTDB_URL ""
+  #endif
+#endif
+
 #define DEFAULT_AP_SSID       "ORBIT-Setup"
 #define DEFAULT_AP_PASS       "orbit1234"
 #define MDNS_HOSTNAME         "orbit"

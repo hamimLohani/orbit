@@ -153,10 +153,19 @@ In addition to the baseline features, ORBIT v2 integrates seven major advanced c
 - **Procedural Moon Phase Engine**: Accurate lunar phase calculation (Waxing/Waning Crescent, Gibbous, Full, New) rendered with pixel shading and illumination percentage without needing external APIs.
 - **ISS Live Tracker**: Fetches real-time International Space Station orbit coordinates via Open-Notify API, displaying distance, speed, and visible pass countdowns.
 
-### 4.5 Hardware Voice Memo Recorder & AI Transcription Pipeline
-- **One-Touch PTT Audio Capture**: Hold `BTN_ACTION` anywhere to immediately capture microphone audio directly to SD card as 16-bit 16kHz WAV (`/memos/memo_001.wav`).
-- **Waveform HUD Overlay**: Live recording timer and audio level meter appear on screen during recording.
-- **Companion AI Integration**: Web companion detects new memos over WebSocket, offers one-click in-browser audio playback, and triggers AI Speech-to-Text (Whisper / Gemini) for automated meeting notes and to-do extraction.
+### 4.5 Hardware Voice Memo Recorder & Voice-to-Text Studio
+- **Multi-Option Voice Recording Architecture (`RecorderApp`)**:
+  - `MEMO_MODE_VOICE_TO_TEXT` (Default): Captures speech and automatically pushes audio metadata via WebSocket to the Companion Web Dashboard, triggering live speech-to-text transcription ready for one-click clipboard copying.
+  - `MEMO_MODE_AUDIO_WAV`: Standard high-fidelity 16kHz 16-bit mono PCM audio recording stored locally on MicroSD card (`/memos/memo_xxxx.wav`).
+  - `MEMO_MODE_AI_TASKS`: Voice notes destined for automatic AI summarization and action item extraction.
+- **On-Device Option Switcher**:
+  - Card 0 on TFT display allows cycling through options using `LEFT` / `RIGHT` buttons with neon color accents and descriptive mode tags.
+  - Card 1 renders pulsing recording indicators, elapsed duration (`00:00.0`), and live mic dB level progress bar.
+  - Card 2 displays MicroSD free storage and live Wi-Fi Web status (`WEB:ONLINE` / `WEB:OFFLINE`).
+- **Companion AI & Web Speech Transcription**:
+  - Real-time WebSocket event dispatch (`memo_event` start/stop) notifies the web companion immediately when recording completes.
+  - In-browser **Voice-to-Text Studio** renders live transcripts with a high-visibility **"Copy to Clipboard"** button, live browser dictation (Web Speech API), `.txt` export, and toast push back to the device screen.
+  - Complete SD Card recording library with HTML5 playback, individual file transcription, WAV downloads, and file deletion (`POST /api/recordings/delete`).
 
 ### 4.6 Retro Micro-Arcade (Orbit Lander)
 - **Full Physics Mini-Game**: Built-in retro arcade game utilizing the 5 tactile buttons.
@@ -301,6 +310,17 @@ All apps and render routines adhere to a unified UI coordinate grid to prevent s
   - Default boot state defaults to `RGB_OFF` (`0`), preventing the light from turning on unsolicited after boot or reset.
   - All non-lighting applications (`SnakeApp`, `LanderApp`, `FocusApp`, `CompanionApp`, `SignalApp`) and incoming toast notifications are completely decoupled from the RGB LED. No other app can illuminate, override, or flash the RGB neo-pixel.
   - In `RgbController`, any flash triggers are strictly ignored while the light is in `RGB_OFF` mode, guaranteeing that turning off the light in the Lights section keeps the LED completely dark across the entire OS.
+- **Rearranged Lighting Architecture & Overlap-Free Typography**:
+  - **On-Device Lights App (`LightsApp`)**:
+    - **Card 0 (Mode & State Header)** (`y = 39..87`, height 48): Features 35px separation between the left Mode title (`> MODE` at `x = 14`, width 36px) and the right-aligned status badge (`xRight = 114`, e.g. `02/10 [ON]` or `[OFF]`), completely eliminating font collisions.
+    - **Card 1 (RGB Brightness)** (`y = 91..136`, height 45): Left label `> RGB LEVEL` with right-aligned percentage (`100%`) separated by a clean 16px safety margin, 100px progress bar at `y = 110`, and navigation hint at `y = 123`.
+    - **Solid Studio Mixer**: Channel row coordinates (`BRT`, `RED`, `GRN`, `BLU` at `y = 71, 87, 103, 119`) with numeric readouts right-aligned at `xRight = 56` and progress bars from `x = 60..112`, preventing numerical overlap with channel labels.
+  - **Web Companion RGB Studio**:
+    - **Master Power Action**: Dedicated high-visibility `⏻ Power Off RGB` action button with neon-red active indicator at the panel header.
+    - **Categorized Mode Options**: 10 light modes organized into structured, responsive category cards:
+      - *Dynamic & Reactive* (4 modes): Ambient Climate (Temp-reactive), Sound Disco (FFT beat visualizer), Disco Alert (Party beat strobe), Pulse Breathe (Sinusoidal glow).
+      - *Atmospheric & Mood* (6 modes): Rainbow Cycle (Fluid HSV), Aurora Lights (Borealis wave), Warm Candle (Campfire flame), Police Siren (Red/Blue strobe), Critical Alert (Red warning), Solid Custom (Manual color mixer).
+    - **Studio Controls**: Separate dedicated sliders for Hardware RGB LED Brightness (`#rgb-bright-slider`), Custom Color Palette with 8 vibrant neon preset swatches, and Display Screen Backlight (`#display-bright-slider`).
 - **Custom Solid RGB Studio Mixer Controls (`LightsApp`)**:
   - In `RGB_SOLID` ("CUSTOM SOLID") mode, the app switches from the standard 2-card layout into the high-precision 5-field **RGB Studio Mixer**:
     - **Card 0 (Mode & Live Preview Swatch)** (`y = 41..66`, height 25): Shows Mode title on the left and a live, real-time 32×19px rounded RGB565 color preview swatch on the right with a crisp white border, instantly reflecting blended channel outputs.
@@ -323,7 +343,7 @@ Served directly from ESP32-S3 LittleFS / SPIFFS or hosted externally via mDNS (`
 1. **Live HUD Dashboard**: WebSocket-synchronized telemetry cards for Temperature, Humidity, Mic dB, and Wi-Fi RSSI updated at 10Hz.
 2. **Dynamic App Remote**: Automatically queries `/api/apps` from the device and generates interactive app launcher cards with active-state highlights.
 3. **RGB Studio**: HTML5 color wheel, ambient brightness slider, and preset mode switcher (Breathe, Rainbow, Disco, Pulse, Solid).
-4. **Voice Memo Hub**: Lists `.wav` recordings on the SD card, provides an HTML5 audio player with waveform preview, and provides a direct hook to Whisper AI / Gemini API.
+4. **Voice Memo & Voice-to-Text Studio**: Live multi-mode voice memo controller (`Voice to Text`, `SD Audio WAV`, `AI Task Extractor`), real-time in-browser speech recognition, automatic speech-to-text transcript generation with one-click clipboard copying (`navigator.clipboard`), TXT export, and full SD Card WAV library management (playback, download, deletion).
 5. **Asset Studio**: Client-side canvas utility allowing users to upload any PNG/JPEG image. The browser automatically crops, resizes to 128×160, converts to 16-bit RGB565 BMP, and streams the binary over WebSocket straight into SD card `/images/wallpapers/`.
 6. **Notification Transmitter**: Form to push high-priority toast messages to the device screen with custom RGB chime colors.
 7. **Firmware OTA & File Upload Studio**:
@@ -467,3 +487,60 @@ ORBIT makes adding future apps effortless:
    REGISTER_APP(MyNewApp);
    ```
 4. **Compile**: The app will automatically appear in the carousel, be reachable via button navigation, and show up in the web app launcher. No core files need to be touched!
+
+---
+
+## 10. Voice Memo & Multi-Mode Studio Architecture
+
+ORBIT incorporates a complete I2S hardware sampling and multi-mode voice capture pipeline on the ESP32-S3:
+
+### 10.1 Multi-Mode Voice Capture
+- **Mode 0: VOICE TO TEXT** — Real-time speech capture streamed to the companion web app for instant transcription and one-click clipboard copying.
+- **Mode 1: ASK AI** — Hardware voice question recording. On stop, triggers speech recognition and answers via the Ambient AI engine, syncing the response back to the TFT screen.
+- **Mode 2: AUDIO WAV** — High-fidelity 16kHz 16-bit Mono PCM raw recording written to MicroSD card (`/orbit_memos/memo_XXXX.wav`) with SPI bus mutex synchronization.
+- **Mode 3: AI TASKS** — Voice note recording parsed automatically for action items, meeting summaries, and task extraction.
+
+### 10.2 Real-time Web Companion Dispatch
+- When hardware recording starts or stops, `EventBus` broadcasts `EVENT_RECORDING_START` and `EVENT_RECORDING_STOP`.
+- `WebSocketServer` sends `{"type":"memo_event","event":"start|stop","mode":X,"filename":"memo_XXXX.wav"}`.
+- Web Companion immediately transcribes the audio using cloud Whisper STT or browser Speech Recognition, populating the hero transcription deck with prominent "Copy to Clipboard" controls.
+
+### 10.3 Web Voice Recording & Audio Player Studio
+- **Dual-Source Voice Recorder**: Record directly in the browser via Web Audio / `MediaRecorder` API or trigger ORBIT's hardware I2S microphone over Wi-Fi.
+- **Live Visualizers**: Dynamic canvas visualizer animating frequency bars during recording (from `AnalyserNode` or ORBIT live telemetry FFT bands) and during playback.
+- **Web Audio Player ("Listen Through Web")**:
+  - Full-featured custom player with seekable timeline, scrubber, current/total time display, volume slider, mute, and speed control (0.75x to 2x).
+  - 1-click **"🎧 Listen"** button in the SD card recordings library loads any `.wav` file into the web player instantly.
+  - Action deck: download audio locally, save browser recordings directly to ORBIT SD card via `POST /api/files/upload`, and push audio to Voice-to-Text transcription.
+
+### 10.4 Firebase Cloud Database & Storage Direct Sync
+- **Direct Cloud Upload**: Audio recordings (`.wav` / `.webm`) are streamed directly to Firebase Cloud Storage (`/orbit_recordings/<filename>`).
+- **Cloud Metadata Document**: Concurrently inserts a document into Cloud Firestore (or Realtime Database) containing:
+  - `filename`, `audio_url`, `duration_sec`, `mode`, `transcript`, `device_id`
+  - Real-time sensor telemetry: `temperature_c`, `humidity_pct`, `noise_db`, `recorded_at`
+- **Auto-Sync Pipeline**: When "⚡ Auto-Upload to Database Direct" is enabled, both browser-recorded audio and hardware memos from the ESP32-S3 upload immediately to Firebase upon recording stop.
+- **Cloud Database Explorer**: Companion dashboard interface to browse cloud recordings, stream audio directly from Firebase Storage URLs, inspect transcripts & telemetry, and manage database records.
+- **Endpoints**:
+  - `GET /api/firebase/config` — Returns Firebase project, bucket, collection credentials.
+  - `POST /api/firebase/sync?file=<name>` — Prepares and validates SD recording for direct Firebase sync.
+
+---
+
+## 11. Ambient Intelligence Studio & On-Device Wi-Fi Screen Sync
+
+ORBIT bridges cloud AI and local hardware telemetry to display intelligent answers directly on the 128x160 TFT display:
+
+### 11.1 AI Engine Options
+1. **Google Gemini Flash / Pro**: Cloud generative intelligence via the Google Gemini REST API.
+2. **OpenAI GPT-4o / Mini**: Low-latency chat completion via OpenAI REST API.
+3. **ORBIT Ambient Assistant**: Zero-dependency local intelligence synthesizing live hardware telemetry (temperature, humidity, noise dB, moon phase, time, and heap).
+
+### 11.2 On-Device AI Answer Overlay
+- **Display Geometry**: Word-wraps responses into 18 characters per line (fitting the 112px card width at 6px/char) with up to 8 lines visible per screen window.
+- **Navigation & Scrolling**: UP and DOWN buttons scroll line-by-line through long answers; scroll arrows appear when content exceeds the view window.
+- **Dismissal**: Pressing [OK] or [BACK] dismisses the overlay and returns to the active carousel app.
+- **Dual-Channel Ingestion**: Answers are pushed to the device via WebSocket (`{"cmd":"show_ai_answer","question":"...","answer":"..."}`) or HTTP REST (`POST /api/ai/answer`).
+- **REST Endpoints**:
+  - `POST /api/ai/answer` — Displays question and answer on the device screen.
+  - `GET /api/ai/answer` — Retrieves current active AI overlay state.
+  - `POST /api/ai/clear` — Hides the AI answer modal.

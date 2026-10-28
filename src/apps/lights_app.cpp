@@ -36,17 +36,20 @@ void LightsApp::onRender(RenderEngine& gfx) {
         // --------------------------------------------------------------------------
         // 2-Card Layout (Standard Modes & Off)
         // --------------------------------------------------------------------------
-        // Card 0: Mode & Power
+        // Card 0: Mode & Power (x=8, y=39, w=112, h=48)
         uint16_t b0Color = (_selectedField == 0) ? COLOR_NEON_CYAN : COLOR_SLATE_BORDER;
-        gfx.drawCard(8, 40, 112, 48, COLOR_SLATE_MID, b0Color);
+        gfx.drawCard(8, 39, 112, 48, COLOR_SLATE_MID, b0Color);
 
-        const char* t0 = (_selectedField == 0) ? "> MODE & POWER" : "  MODE & POWER";
-        gfx.drawText(12, 45, t0, COLOR_TEXT_MUTED, 1);
+        // Header Line: Left label (x=14) and Right Status Pill (xRight=114) -> 35px clear margin!
+        const char* t0 = (_selectedField == 0) ? "> MODE" : "  MODE";
+        gfx.drawText(14, 44, t0, (_selectedField == 0) ? COLOR_NEON_CYAN : COLOR_TEXT_MUTED, 1);
 
         if (mode == RGB_OFF) {
-            gfx.drawTextRight(112, 45, "[OFF]", COLOR_TEXT_MUTED, 1);
+            gfx.drawTextRight(114, 44, "[OFF]", COLOR_TEXT_MUTED, 1);
         } else {
-            gfx.drawTextRight(112, 45, "[ON]", COLOR_NEON_MINT, 1);
+            char idxBuf[16];
+            snprintf(idxBuf, sizeof(idxBuf), "%02d/10 [ON]", (uint8_t)mode);
+            gfx.drawTextRight(114, 44, idxBuf, COLOR_NEON_MINT, 1);
         }
 
         const char* modeName = "LIGHT IS OFF";
@@ -58,35 +61,35 @@ void LightsApp::onRender(RenderEngine& gfx) {
             case RGB_BREATHE:     modeName = "PULSE BREATHE"; modeColor = COLOR_NEON_PURPLE; break;
             case RGB_RAINBOW:     modeName = "RAINBOW CYCLE"; modeColor = COLOR_NEON_CYAN; break;
             case RGB_ALERT:       modeName = "CRITICAL ALERT"; modeColor = COLOR_NEON_RED; break;
-            case RGB_DISCO_ALERT: modeName = "DISCO ALERT"; modeColor = COLOR_NEON_RED; break;
+            case RGB_DISCO_ALERT: modeName = "DISCO STROBE"; modeColor = COLOR_NEON_RED; break;
             case RGB_CANDLE:      modeName = "WARM CANDLE"; modeColor = COLOR_NEON_AMBER; break;
             case RGB_AURORA:      modeName = "AURORA LIGHTS"; modeColor = COLOR_NEON_MINT; break;
             case RGB_POLICE:      modeName = "POLICE SIREN"; modeColor = COLOR_NEON_CYAN; break;
             default: break;
         }
-        gfx.drawTextCentered(64, 61, modeName, modeColor, 1);
+        gfx.drawTextCentered(64, 58, modeName, modeColor, 1);
 
         if (_selectedField == 0) {
-            gfx.drawTextCentered(64, 75, "< LEFT / RIGHT >", COLOR_TEXT_MUTED, 1);
+            gfx.drawTextCentered(64, 72, "< PREV / NEXT >", COLOR_TEXT_MUTED, 1);
         }
 
-        // Card 1: Brightness (y=90, height=46 -> ends at 136)
+        // Card 1: Brightness Level (x=8, y=91, w=112, h=45)
         uint16_t b1Color = (_selectedField == 1) ? COLOR_NEON_CYAN : COLOR_SLATE_BORDER;
-        gfx.drawCard(8, 90, 112, 46, COLOR_SLATE_MID, b1Color);
+        gfx.drawCard(8, 91, 112, 45, COLOR_SLATE_MID, b1Color);
 
-        const char* t1 = (_selectedField == 1) ? "> BRIGHTNESS" : "  BRIGHTNESS";
-        gfx.drawText(12, 95, t1, COLOR_TEXT_MUTED, 1);
-        gfx.drawTextRight(112, 95, bBuf, (mode == RGB_OFF) ? COLOR_TEXT_MUTED : COLOR_TEXT_LIGHT, 1);
+        const char* t1 = (_selectedField == 1) ? "> RGB LEVEL" : "  RGB LEVEL";
+        gfx.drawText(14, 96, t1, (_selectedField == 1) ? COLOR_NEON_CYAN : COLOR_TEXT_MUTED, 1);
+        gfx.drawTextRight(114, 96, bBuf, (mode == RGB_OFF) ? COLOR_TEXT_MUTED : COLOR_TEXT_LIGHT, 1);
 
         gfx.drawProgressBar(14, 110, 100, 5, pct, (mode == RGB_OFF) ? COLOR_TEXT_MUTED : COLOR_NEON_CYAN);
 
         if (_selectedField == 1) {
-            gfx.drawTextCentered(64, 124, "< LEFT / RIGHT >", COLOR_TEXT_MUTED, 1);
+            gfx.drawTextCentered(64, 123, "< DIM / BOOST >", COLOR_TEXT_MUTED, 1);
         }
 
         // Bottom hint (y=146, 19 chars max = 114px, 7px side margins)
         if (_selectedField == 0) {
-            gfx.drawTextCentered(64, 146, "OK:Power   L/R:Mode", COLOR_TEXT_MUTED, 1);
+            gfx.drawTextCentered(64, 146, "OK:Power  L/R:Mode", COLOR_TEXT_MUTED, 1);
         } else {
             gfx.drawTextCentered(64, 146, "L/R:Dim   OK:Jump", COLOR_TEXT_MUTED, 1);
         }
@@ -100,35 +103,35 @@ void LightsApp::onRender(RenderEngine& gfx) {
         uint8_t b = currColor & 0xFF;
         uint16_t preview565 = RGB565(r, g, b);
 
-        // Card 0: Mode & Live Color Preview Swatch (y=41, h=25 -> ends at 66)
+        // Card 0: Mode & Live Color Preview Swatch (y=39, h=26 -> ends at 65)
         uint16_t b0Color = (_selectedField == 0) ? COLOR_NEON_CYAN : COLOR_SLATE_BORDER;
-        gfx.drawCard(8, 41, 112, 25, COLOR_SLATE_MID, b0Color);
+        gfx.drawCard(8, 39, 112, 26, COLOR_SLATE_MID, b0Color);
 
         const char* t0 = (_selectedField == 0) ? "> MODE" : "  MODE";
-        gfx.drawText(12, 44, t0, (_selectedField == 0) ? COLOR_NEON_CYAN : COLOR_TEXT_MUTED, 1);
-        gfx.drawText(16, 54, "CUSTOM SOLID", COLOR_WHITE, 1);
+        gfx.drawText(12, 43, t0, (_selectedField == 0) ? COLOR_NEON_CYAN : COLOR_TEXT_MUTED, 1);
+        gfx.drawText(14, 52, "CUSTOM SOLID", COLOR_WHITE, 1);
 
-        // Live Color Preview Pill Swatch (x=82, y=44, w=32, h=19)
-        gfx.fillRoundRect(82, 44, 32, 19, 2, preview565);
-        gfx.drawRoundRect(82, 44, 32, 19, 2, COLOR_WHITE);
+        // Live Color Preview Pill Swatch (x=82, y=42, w=32, h=19)
+        gfx.fillRoundRect(82, 42, 32, 19, 2, preview565);
+        gfx.drawRoundRect(82, 42, 32, 19, 2, COLOR_WHITE);
 
-        // Card 1: Studio Mixer Sliders (y=68, h=68 -> ends at 136)
-        gfx.drawCard(8, 68, 112, 68, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
+        // Card 1: Studio Mixer Sliders (y=67, h=71 -> ends at 138)
+        gfx.drawCard(8, 67, 112, 71, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
 
         // Row 0: Brightness (Field 1)
         {
             bool isSel = (_selectedField == 1);
             uint16_t accent = COLOR_NEON_CYAN;
             if (isSel) {
-                gfx.drawFastVLine(9, 72, 8, accent);
-                gfx.drawFastVLine(10, 72, 8, accent);
-                gfx.drawText(12, 72, ">", COLOR_WHITE, 1);
+                gfx.drawFastVLine(9, 71, 8, accent);
+                gfx.drawFastVLine(10, 71, 8, accent);
+                gfx.drawText(11, 71, ">", COLOR_WHITE, 1);
             }
-            gfx.drawText(18, 72, "BRT", isSel ? COLOR_WHITE : COLOR_TEXT_MUTED, 1);
-            gfx.drawTextRight(59, 72, bBuf, isSel ? COLOR_WHITE : COLOR_TEXT_LIGHT, 1);
-            gfx.drawProgressBar(64, 73, 50, 6, pct, COLOR_NEON_CYAN, COLOR_SLATE_DARK);
+            gfx.drawText(16, 71, "BRT", isSel ? COLOR_WHITE : COLOR_TEXT_MUTED, 1);
+            gfx.drawTextRight(56, 71, bBuf, isSel ? COLOR_WHITE : COLOR_TEXT_LIGHT, 1);
+            gfx.drawProgressBar(60, 72, 52, 6, pct, COLOR_NEON_CYAN, COLOR_SLATE_DARK);
             if (isSel) {
-                gfx.drawRoundRect(63, 72, 52, 8, 3, accent);
+                gfx.drawRoundRect(59, 71, 54, 8, 3, accent);
             }
         }
 
@@ -137,18 +140,18 @@ void LightsApp::onRender(RenderEngine& gfx) {
             bool isSel = (_selectedField == 2);
             uint16_t accent = COLOR_NEON_RED;
             if (isSel) {
-                gfx.drawFastVLine(9, 89, 8, accent);
-                gfx.drawFastVLine(10, 89, 8, accent);
-                gfx.drawText(12, 89, ">", COLOR_WHITE, 1);
+                gfx.drawFastVLine(9, 87, 8, accent);
+                gfx.drawFastVLine(10, 87, 8, accent);
+                gfx.drawText(11, 87, ">", COLOR_WHITE, 1);
             }
             char rBuf[8];
             snprintf(rBuf, sizeof(rBuf), "%d", r);
             uint8_t rPct = (uint16_t)r * 100 / 255;
-            gfx.drawText(18, 89, "RED", isSel ? COLOR_NEON_RED : COLOR_TEXT_MUTED, 1);
-            gfx.drawTextRight(59, 89, rBuf, isSel ? COLOR_WHITE : COLOR_TEXT_LIGHT, 1);
-            gfx.drawProgressBar(64, 90, 50, 6, rPct, COLOR_NEON_RED, COLOR_SLATE_DARK);
+            gfx.drawText(16, 87, "RED", isSel ? COLOR_NEON_RED : COLOR_TEXT_MUTED, 1);
+            gfx.drawTextRight(56, 87, rBuf, isSel ? COLOR_WHITE : COLOR_TEXT_LIGHT, 1);
+            gfx.drawProgressBar(60, 88, 52, 6, rPct, COLOR_NEON_RED, COLOR_SLATE_DARK);
             if (isSel) {
-                gfx.drawRoundRect(63, 89, 52, 8, 3, accent);
+                gfx.drawRoundRect(59, 87, 54, 8, 3, accent);
             }
         }
 
@@ -157,18 +160,18 @@ void LightsApp::onRender(RenderEngine& gfx) {
             bool isSel = (_selectedField == 3);
             uint16_t accent = COLOR_NEON_MINT;
             if (isSel) {
-                gfx.drawFastVLine(9, 106, 8, accent);
-                gfx.drawFastVLine(10, 106, 8, accent);
-                gfx.drawText(12, 106, ">", COLOR_WHITE, 1);
+                gfx.drawFastVLine(9, 103, 8, accent);
+                gfx.drawFastVLine(10, 103, 8, accent);
+                gfx.drawText(11, 103, ">", COLOR_WHITE, 1);
             }
             char gBuf[8];
             snprintf(gBuf, sizeof(gBuf), "%d", g);
             uint8_t gPct = (uint16_t)g * 100 / 255;
-            gfx.drawText(18, 106, "GRN", isSel ? COLOR_NEON_MINT : COLOR_TEXT_MUTED, 1);
-            gfx.drawTextRight(59, 106, gBuf, isSel ? COLOR_WHITE : COLOR_TEXT_LIGHT, 1);
-            gfx.drawProgressBar(64, 107, 50, 6, gPct, COLOR_NEON_MINT, COLOR_SLATE_DARK);
+            gfx.drawText(16, 103, "GRN", isSel ? COLOR_NEON_MINT : COLOR_TEXT_MUTED, 1);
+            gfx.drawTextRight(56, 103, gBuf, isSel ? COLOR_WHITE : COLOR_TEXT_LIGHT, 1);
+            gfx.drawProgressBar(60, 104, 52, 6, gPct, COLOR_NEON_MINT, COLOR_SLATE_DARK);
             if (isSel) {
-                gfx.drawRoundRect(63, 106, 52, 8, 3, accent);
+                gfx.drawRoundRect(59, 103, 54, 8, 3, accent);
             }
         }
 
@@ -177,24 +180,24 @@ void LightsApp::onRender(RenderEngine& gfx) {
             bool isSel = (_selectedField == 4);
             uint16_t accent = COLOR_NEON_CYAN;
             if (isSel) {
-                gfx.drawFastVLine(9, 123, 8, accent);
-                gfx.drawFastVLine(10, 123, 8, accent);
-                gfx.drawText(12, 123, ">", COLOR_WHITE, 1);
+                gfx.drawFastVLine(9, 119, 8, accent);
+                gfx.drawFastVLine(10, 119, 8, accent);
+                gfx.drawText(11, 119, ">", COLOR_WHITE, 1);
             }
             char bValBuf[8];
             snprintf(bValBuf, sizeof(bValBuf), "%d", b);
             uint8_t bPct = (uint16_t)b * 100 / 255;
-            gfx.drawText(18, 123, "BLU", isSel ? COLOR_NEON_CYAN : COLOR_TEXT_MUTED, 1);
-            gfx.drawTextRight(59, 123, bValBuf, isSel ? COLOR_WHITE : COLOR_TEXT_LIGHT, 1);
-            gfx.drawProgressBar(64, 124, 50, 6, bPct, COLOR_NEON_CYAN, COLOR_SLATE_DARK);
+            gfx.drawText(16, 119, "BLU", isSel ? COLOR_NEON_CYAN : COLOR_TEXT_MUTED, 1);
+            gfx.drawTextRight(56, 119, bValBuf, isSel ? COLOR_WHITE : COLOR_TEXT_LIGHT, 1);
+            gfx.drawProgressBar(60, 120, 52, 6, bPct, COLOR_NEON_CYAN, COLOR_SLATE_DARK);
             if (isSel) {
-                gfx.drawRoundRect(63, 123, 52, 8, 3, accent);
+                gfx.drawRoundRect(59, 119, 54, 8, 3, accent);
             }
         }
 
         // Bottom hint (y=146, 19 chars max = 114px, 7px side margins)
         if (_selectedField == 0) {
-            gfx.drawTextCentered(64, 146, "OK:Power   L/R:Mode", COLOR_TEXT_MUTED, 1);
+            gfx.drawTextCentered(64, 146, "OK:Power  L/R:Mode", COLOR_TEXT_MUTED, 1);
         } else if (_selectedField == 1) {
             gfx.drawTextCentered(64, 146, "L/R:Dim   OK:Jump", COLOR_TEXT_MUTED, 1);
         } else if (_selectedField == 2) {

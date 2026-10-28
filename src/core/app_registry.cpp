@@ -100,6 +100,9 @@ void AppRegistry::render(RenderEngine& gfx) {
         // 4. Render Toast notification overlay
         gfx.renderToastOverlay();
 
+        // 5. Render AI Answer modal overlay if active (while connected to Wi-Fi)
+        gfx.renderAiAnswerOverlay();
+
         xSemaphoreGiveRecursive(_registryMutex);
     }
 }
@@ -160,6 +163,27 @@ void AppRegistry::renderCarousel(RenderEngine& gfx) {
 
 void AppRegistry::handleButtonEvent(const ButtonEvent& evt) {
     if (_registryMutex && xSemaphoreTakeRecursive(_registryMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+        // 0. AI Answer Modal Overlay Interception (Scroll / Dismiss)
+        if (RenderEngine::getInstance().isAiAnswerActive()) {
+            if (evt.type == BUTTON_CLICK || evt.type == BUTTON_REPEAT) {
+                if (evt.button == BTN_ID_UP) {
+                    RenderEngine::getInstance().scrollAiAnswer(-1);
+                    xSemaphoreGiveRecursive(_registryMutex);
+                    return;
+                } else if (evt.button == BTN_ID_DOWN) {
+                    RenderEngine::getInstance().scrollAiAnswer(+1);
+                    xSemaphoreGiveRecursive(_registryMutex);
+                    return;
+                } else if (evt.button == BTN_ID_ENTER || evt.button == BTN_ID_SELECT || evt.button == BTN_ID_LEFT || evt.button == BTN_ID_BACK) {
+                    RenderEngine::getInstance().hideAiAnswer();
+                    xSemaphoreGiveRecursive(_registryMutex);
+                    return;
+                }
+            }
+            xSemaphoreGiveRecursive(_registryMutex);
+            return;
+        }
+
         // 1. Threshold: 3.0s Long Hold on ENTER -> Direct return to HOME ("3s enter = home")
         if (evt.button == BTN_ID_ENTER && (evt.type == BUTTON_HOLD_3S || evt.type == BUTTON_HOLD_2S)) {
             returnHome();

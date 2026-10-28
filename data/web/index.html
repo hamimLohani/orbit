@@ -58,7 +58,11 @@
       </button>
       <button class="nav-tab" data-tab="memos">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
-        <span>Voice Memos & AI</span>
+        <span>Voice Memos</span>
+      </button>
+      <button class="nav-tab" data-tab="ask-ai">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10a9.96 9.96 0 0 1-6.38-2.3L2 21l1.3-3.62A9.96 9.96 0 0 1 2 12C2 6.48 6.48 2 12 2z"></path><path d="M12 8v4"></path><path d="M12 16h.01"></path></svg>
+        <span>Ask AI</span>
       </button>
       <button class="nav-tab" data-tab="studio">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
@@ -139,6 +143,75 @@
           <div class="info-row"><span>Lunar Phase:</span><strong id="val-moon">--</strong></div>
           <div class="info-row"><span>ISS Orbit:</span><strong>420 km Altitude</strong></div>
           <div class="info-row"><span>Platform:</span><strong>ESP32-S3 Dual-Core</strong></div>
+        </div>
+      </section>
+
+      <!-- Outdoor Live Weather & Climate Delta Comparison Card -->
+      <section class="vtt-studio-card" style="margin-top: 20px;">
+        <div class="vtt-card-header">
+          <div class="vtt-title-group">
+            <h4>⛅ Live Weather & Climate Comparison</h4>
+            <span class="status-pill status-pill-active" id="weather-status-pill">
+              <span class="pulse-dot-cyan"></span>
+              <span id="weather-status-text">OpenWeatherMap Ready</span>
+            </span>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <input type="text" id="weather-city-input" placeholder="City (e.g. London)" class="styled-input" style="width: 140px; padding: 4px 10px; font-size: 0.8rem;" value="London">
+            <button class="btn btn-secondary btn-sm" id="btn-fetch-weather">🔄 Refresh Weather</button>
+            <button class="btn btn-primary btn-sm" id="btn-sync-weather-device">🛰️ Push to Screen</button>
+          </div>
+        </div>
+
+        <div class="web-audio-studio-grid" style="margin-bottom: 0;">
+          <!-- Left: Outdoor Live Weather -->
+          <div class="control-box audio-studio-card" style="padding: 16px;">
+            <div class="studio-card-header" style="margin-bottom: 8px;">
+              <div class="studio-header-title">
+                <span class="studio-icon">🌤️</span>
+                <h4 id="weather-city-display">London, UK</h4>
+              </div>
+              <span class="audio-track-tag" id="weather-cond-badge">Clear Sky</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin: 8px 0;">
+              <div>
+                <span style="font-size: 2.2rem; font-weight: 700; color: var(--color-neon-cyan); font-family: 'JetBrains Mono', monospace;" id="weather-temp-display">--°C</span>
+                <span style="font-size: 0.8rem; color: var(--color-text-muted); margin-left: 6px;">Outdoor</span>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-size: 0.85rem; color: var(--color-neon-amber);" id="weather-feels-display">Feels like: --°C</div>
+                <div style="font-size: 0.75rem; color: var(--color-text-muted);" id="weather-press-display">1014 hPa</div>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--color-text-muted); padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.06);">
+              <span>💧 Humidity: <strong id="weather-hum-display" style="color:#fff;">--%</strong></span>
+              <span>💨 Wind: <strong id="weather-wind-display" style="color:#fff;">-- m/s</strong></span>
+            </div>
+          </div>
+
+          <!-- Right: Indoor vs Outdoor Delta Analysis & Advisory -->
+          <div class="control-box audio-studio-card" style="padding: 16px;">
+            <div class="studio-card-header" style="margin-bottom: 8px;">
+              <div class="studio-header-title">
+                <span class="studio-icon">📊</span>
+                <h4>Indoor vs Outdoor Analysis</h4>
+              </div>
+              <span class="badge" style="background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem;" id="weather-delta-badge">Balanced</span>
+            </div>
+            <div style="display: flex; gap: 12px; margin: 10px 0;">
+              <div style="flex: 1; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; border: 1px solid var(--border-color);">
+                <div style="font-size: 0.7rem; color: var(--color-text-muted);">TEMP DELTA</div>
+                <div style="font-size: 1.1rem; font-weight: 700; color: var(--color-neon-cyan);" id="weather-delta-temp">--°C</div>
+              </div>
+              <div style="flex: 1; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; border: 1px solid var(--border-color);">
+                <div style="font-size: 0.7rem; color: var(--color-text-muted);">HUMIDITY DELTA</div>
+                <div style="font-size: 1.1rem; font-weight: 700; color: var(--color-neon-mint);" id="weather-delta-hum">--%</div>
+              </div>
+            </div>
+            <div style="background: rgba(34,197,94,0.08); border-left: 3px solid #22c55e; padding: 8px 12px; border-radius: 4px; font-size: 0.78rem; color: #fff;" id="weather-advisory-text">
+              ✨ Dynamic microclimate advisory: Checking indoor and outdoor differential...
+            </div>
+          </div>
         </div>
       </section>
     </main>
@@ -224,51 +297,158 @@
         <div class="panel-header">
           <div>
             <h3>WS2812 Addressable RGB Studio</h3>
-            <p class="section-desc">Fine-tune the ambient lighting modes, effects, and palettes.</p>
+            <p class="section-desc">Fine-tune ambient lighting modes, sound-reactive visualizers, and color presets.</p>
+          </div>
+          <!-- Master Power Action -->
+          <div class="lighting-master-actions">
+            <button class="mode-btn mode-btn-power" data-mode="0" id="btn-rgb-power" title="Shut off WS2812 LED hardware">
+              <span class="power-icon">⏻</span>
+              <span class="power-label">Power Off RGB</span>
+            </button>
           </div>
         </div>
 
         <div class="rgb-controls-grid">
-          <!-- Modes -->
-          <div class="control-box">
-            <h4>Lighting Modes</h4>
-            <div class="mode-buttons-grid">
-              <button class="mode-btn active" data-mode="1">Ambient (Climate)</button>
-              <button class="mode-btn" data-mode="2">Disco (Sound-Reactive)</button>
-              <button class="mode-btn" data-mode="7">Disco Alert (Beat Strobe)</button>
-              <button class="mode-btn" data-mode="3">Sinusoidal Breathe</button>
-              <button class="mode-btn" data-mode="4">Rainbow Cycle</button>
-              <button class="mode-btn" data-mode="8">Warm Candle</button>
-              <button class="mode-btn" data-mode="9">Aurora Borealis</button>
-              <button class="mode-btn" data-mode="10">Police Siren</button>
-              <button class="mode-btn" data-mode="6">Critical Alert</button>
-              <button class="mode-btn" data-mode="5">Solid Custom</button>
-              <button class="mode-btn" data-mode="0">Turn Off</button>
+          <!-- Left Column: Categorized Lighting Modes -->
+          <div class="lighting-modes-column">
+            
+            <!-- Category 1: Dynamic & Reactive -->
+            <div class="control-box mode-category-card">
+              <div class="category-header">
+                <span class="cat-badge badge-cyan">Dynamic & Reactive</span>
+                <span class="cat-subtitle">Sensor telemetry & audio reactivity</span>
+              </div>
+              <div class="mode-buttons-grid">
+                <button class="mode-btn active" data-mode="1">
+                  <div class="mode-title-row">
+                    <span class="mode-icon">🌡️</span>
+                    <span class="mode-name">Ambient Climate</span>
+                  </div>
+                  <span class="mode-tag">Temperature Gradient</span>
+                </button>
+                <button class="mode-btn" data-mode="2">
+                  <div class="mode-title-row">
+                    <span class="mode-icon">🎵</span>
+                    <span class="mode-name">Sound Disco</span>
+                  </div>
+                  <span class="mode-tag">FFT Beat Visualizer</span>
+                </button>
+                <button class="mode-btn" data-mode="7">
+                  <div class="mode-title-row">
+                    <span class="mode-icon">⚡</span>
+                    <span class="mode-name">Disco Alert</span>
+                  </div>
+                  <span class="mode-tag">Party Beat Strobe</span>
+                </button>
+                <button class="mode-btn" data-mode="3">
+                  <div class="mode-title-row">
+                    <span class="mode-icon">🫀</span>
+                    <span class="mode-name">Pulse Breathe</span>
+                  </div>
+                  <span class="mode-tag">Sinusoidal Glow</span>
+                </button>
+              </div>
             </div>
+
+            <!-- Category 2: Atmospheric & FX Effects -->
+            <div class="control-box mode-category-card">
+              <div class="category-header">
+                <span class="cat-badge badge-purple">Atmospheric & Mood</span>
+                <span class="cat-subtitle">Ambient scenery, beacons & solid custom</span>
+              </div>
+              <div class="mode-buttons-grid">
+                <button class="mode-btn" data-mode="4">
+                  <div class="mode-title-row">
+                    <span class="mode-icon">🌈</span>
+                    <span class="mode-name">Rainbow Cycle</span>
+                  </div>
+                  <span class="mode-tag">Fluid HSV Spectrum</span>
+                </button>
+                <button class="mode-btn" data-mode="9">
+                  <div class="mode-title-row">
+                    <span class="mode-icon">🌌</span>
+                    <span class="mode-name">Aurora Lights</span>
+                  </div>
+                  <span class="mode-tag">Borealis Cyan/Mint</span>
+                </button>
+                <button class="mode-btn" data-mode="8">
+                  <div class="mode-title-row">
+                    <span class="mode-icon">🕯️</span>
+                    <span class="mode-name">Warm Candle</span>
+                  </div>
+                  <span class="mode-tag">Campfire Flame</span>
+                </button>
+                <button class="mode-btn" data-mode="10">
+                  <div class="mode-title-row">
+                    <span class="mode-icon">🚨</span>
+                    <span class="mode-name">Police Siren</span>
+                  </div>
+                  <span class="mode-tag">Red & Blue Strobe</span>
+                </button>
+                <button class="mode-btn" data-mode="6">
+                  <div class="mode-title-row">
+                    <span class="mode-icon">⚠️</span>
+                    <span class="mode-name">Critical Alert</span>
+                  </div>
+                  <span class="mode-tag">Warning Red Flash</span>
+                </button>
+                <button class="mode-btn" data-mode="5">
+                  <div class="mode-title-row">
+                    <span class="mode-icon">🎨</span>
+                    <span class="mode-name">Solid Custom</span>
+                  </div>
+                  <span class="mode-tag">Manual Color Mixer</span>
+                </button>
+              </div>
+            </div>
+
           </div>
 
-          <!-- Color Picker & Swatches -->
-          <div class="control-box">
-            <h4>Color Customizer</h4>
-            <div class="color-picker-row">
-              <input type="color" id="rgb-color-input" value="#00ffff" class="color-input">
-              <div class="color-swatches">
-                <span class="swatch" style="background:#00ffff" data-color="#00ffff"></span>
-                <span class="swatch" style="background:#b81fdf" data-color="#b81fdf"></span>
-                <span class="swatch" style="background:#2fe89f" data-color="#2fe89f"></span>
-                <span class="swatch" style="background:#fd2020" data-color="#fd2020"></span>
-                <span class="swatch" style="background:#fea000" data-color="#fea000"></span>
-                <span class="swatch" style="background:#ffffff" data-color="#ffffff"></span>
+          <!-- Right Column: Color Customizer & Output Controls -->
+          <div class="lighting-studio-column">
+            
+            <!-- RGB LED Hardware Brightness -->
+            <div class="control-box">
+              <h4>RGB LED Brightness</h4>
+              <div class="slider-group">
+                <div class="slider-header">
+                  <label for="rgb-bright-slider">Hardware LED Intensity</label>
+                  <span id="rgb-bright-val" style="color:var(--color-neon-cyan); font-weight:700;">80%</span>
+                </div>
+                <input type="range" id="rgb-bright-slider" min="0" max="100" value="80" class="styled-slider">
               </div>
             </div>
 
-            <div class="slider-group" style="margin-top: 24px;">
-              <div class="slider-header">
-                <label for="display-bright-slider">Display Backlight Brightness</label>
-                <span id="display-bright-val">80%</span>
+            <!-- Color Palette & Swatches -->
+            <div class="control-box">
+              <h4>Color Customizer (Solid Mode)</h4>
+              <div class="color-picker-row">
+                <input type="color" id="rgb-color-input" value="#00ffff" class="color-input" title="Choose Custom Hex Color">
+                <div class="color-swatches">
+                  <span class="swatch" style="background:#00ffff" data-color="#00ffff" title="Neon Cyan"></span>
+                  <span class="swatch" style="background:#2fe89f" data-color="#2fe89f" title="Neon Mint"></span>
+                  <span class="swatch" style="background:#b81fdf" data-color="#b81fdf" title="Cyber Purple"></span>
+                  <span class="swatch" style="background:#fea000" data-color="#fea000" title="Warm Amber"></span>
+                  <span class="swatch" style="background:#fd2020" data-color="#fd2020" title="Alert Red"></span>
+                  <span class="swatch" style="background:#1f8eff" data-color="#1f8eff" title="Deep Blue"></span>
+                  <span class="swatch" style="background:#ff3399" data-color="#ff3399" title="Neon Pink"></span>
+                  <span class="swatch" style="background:#ffffff" data-color="#ffffff" title="Pure White"></span>
+                </div>
               </div>
-              <input type="range" id="display-bright-slider" min="0" max="100" value="80" class="styled-slider">
             </div>
+
+            <!-- Display Screen Backlight (Secondary) -->
+            <div class="control-box">
+              <h4>Display TFT Backlight</h4>
+              <div class="slider-group">
+                <div class="slider-header">
+                  <label for="display-bright-slider">Screen PWM Backlight</label>
+                  <span id="display-bright-val" style="color:var(--color-neon-mint); font-weight:700;">80%</span>
+                </div>
+                <input type="range" id="display-bright-slider" min="0" max="100" value="80" class="styled-slider">
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
@@ -279,10 +459,10 @@
       <div class="panel-section">
         <div class="panel-header">
           <div>
-            <h3>Hardware Voice Memos & AI Assistant Pipeline</h3>
-            <p class="section-desc">Play back recordings stored on the SD card or trigger Whisper AI transcription.</p>
+            <h3>Hardware Voice Memos & Voice-to-Text Studio</h3>
+            <p class="section-desc">Record multi-mode voice memos, stream voice-to-text live to web, and copy transcripts instantly.</p>
           </div>
-          <div class="memos-actions">
+          <div class="memos-header-actions">
             <button class="btn btn-primary btn-record" id="btn-toggle-rec">
               <span class="rec-dot"></span>
               <span id="rec-btn-text">Record Voice Memo</span>
@@ -290,23 +470,436 @@
           </div>
         </div>
 
-        <div class="memos-list" id="memos-container">
-          <div class="empty-state">
-            <p>Loading voice memos from SD card...</p>
+        <!-- Mode Option Switcher Bar -->
+        <div class="memo-options-bar">
+          <span class="options-label">Active Memo Mode:</span>
+          <div class="memo-mode-pills">
+            <button class="memo-mode-btn active" data-memo-mode="0" id="mode-btn-vtt">
+              <span class="mode-emoji">💬</span>
+              <span>Voice to Text (Web Copy)</span>
+            </button>
+            <button class="memo-mode-btn" data-memo-mode="1" id="mode-btn-ask-ai">
+              <span class="mode-emoji">✨</span>
+              <span>Ask AI (Voice Query)</span>
+            </button>
+            <button class="memo-mode-btn" data-memo-mode="2" id="mode-btn-wav">
+              <span class="mode-emoji">🎙️</span>
+              <span>SD Audio WAV (16kHz PCM)</span>
+            </button>
+            <button class="memo-mode-btn" data-memo-mode="3" id="mode-btn-tasks">
+              <span class="mode-emoji">🤖</span>
+              <span>AI Task & Note Extractor</span>
+            </button>
           </div>
         </div>
 
-        <!-- AI Transcription Box -->
-        <div class="ai-box">
-          <div class="ai-box-header">
-            <h4>🤖 AI Transcription & Action Item Extractor</h4>
-            <span class="badge-pill">Whisper / Gemini Ready</span>
+        <!-- Section: Web Audio Recording & Player Studio (Record & Listen Through Web) -->
+        <div class="web-audio-studio-grid">
+
+          <!-- Left Card: Voice Recorder -->
+          <div class="control-box audio-studio-card recorder-card">
+            <div class="studio-card-header">
+              <div class="studio-header-title">
+                <span class="studio-icon">🎙️</span>
+                <h4>Voice Recorder Studio</h4>
+              </div>
+              <span class="status-pill" id="web-rec-status-pill">
+                <span class="status-dot connected" id="web-rec-dot"></span>
+                <span id="web-rec-status-text">Ready to Record</span>
+              </span>
+            </div>
+
+            <!-- Source Selector Tabs -->
+            <div class="rec-source-selector">
+              <span class="source-label">Source:</span>
+              <div class="source-pills">
+                <button type="button" class="source-pill active" id="src-browser-mic" data-src="browser">
+                  <span>💻 Browser Mic</span>
+                </button>
+                <button type="button" class="source-pill" id="src-orbit-mic" data-src="orbit">
+                  <span>🛰️ ORBIT Device Mic</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Live VU / Waveform Visualizer Canvas -->
+            <div class="rec-visualizer-container">
+              <canvas id="rec-visualizer-canvas" width="400" height="70"></canvas>
+              <div class="rec-timer-overlay" id="rec-timer-display">00:00</div>
+            </div>
+
+            <!-- Recorder Action Buttons -->
+            <div class="recorder-controls-row">
+              <button class="btn btn-primary btn-rec-main" id="btn-web-rec-toggle">
+                <span class="rec-icon-circle" id="web-rec-icon-circle">●</span>
+                <span id="web-rec-btn-text">Start Recording</span>
+              </button>
+              <button class="btn btn-secondary btn-ctrl-sub" id="btn-web-rec-pause" disabled title="Pause recording">
+                <span>⏸️ Pause</span>
+              </button>
+              <button class="btn btn-secondary btn-ctrl-sub" id="btn-web-rec-cancel" disabled title="Reset / Cancel">
+                <span>✖️ Reset</span>
+              </button>
+            </div>
+            <div class="recorder-hint-text" id="rec-hint-text">
+              Record high-quality audio directly via your browser microphone, or switch to ORBIT device mic.
+            </div>
           </div>
-          <textarea id="ai-transcript" class="styled-textarea" placeholder="Select a recording or speak into ORBIT to generate real-time AI transcriptions and automated action items..." rows="4"></textarea>
-          <div class="ai-actions">
-            <button class="btn btn-secondary" id="btn-transcribe-demo">Generate AI Summary Demo</button>
+
+          <!-- Right Card: Web Audio Player ("Listen Through Web") -->
+          <div class="control-box audio-studio-card player-card">
+            <div class="studio-card-header">
+              <div class="studio-header-title">
+                <span class="studio-icon">🎧</span>
+                <h4>Web Audio Player (Listen)</h4>
+              </div>
+              <span class="audio-track-tag" id="player-track-name">No Audio Loaded</span>
+            </div>
+
+            <!-- Audio Player Visualizer -->
+            <div class="player-visualizer-container">
+              <canvas id="player-visualizer-canvas" width="400" height="70"></canvas>
+              <div class="player-format-badge" id="player-format-badge">Ready</div>
+            </div>
+
+            <!-- Interactive Seekable Timeline -->
+            <div class="player-timeline-wrap">
+              <div class="timeline-bar" id="player-timeline" title="Click to seek">
+                <div class="timeline-progress" id="player-progress"></div>
+                <div class="timeline-scrubber" id="player-scrubber"></div>
+              </div>
+              <div class="timeline-timestamps">
+                <span id="player-cur-time">0:00</span>
+                <span id="player-total-time">0:00</span>
+              </div>
+            </div>
+
+            <!-- Player Controls Row -->
+            <div class="player-controls-deck">
+              <div class="player-btn-group">
+                <button class="btn-play-round" id="btn-player-play" disabled title="Play / Pause">
+                  <span id="player-play-icon">▶</span>
+                </button>
+                <button class="btn-ctrl-sub" id="btn-player-stop" disabled title="Stop & Rewind">
+                  <span>⏹</span>
+                </button>
+                <button class="btn-ctrl-sub" id="btn-player-replay" disabled title="Replay from beginning">
+                  <span>↺</span>
+                </button>
+              </div>
+
+              <!-- Volume & Speed Controls -->
+              <div class="player-settings-group">
+                <div class="volume-slider-group">
+                  <button type="button" class="btn-vol-icon" id="btn-vol-mute" title="Mute / Unmute">🔊</button>
+                  <input type="range" id="player-vol-slider" min="0" max="1" step="0.05" value="1" class="mini-slider" title="Volume">
+                </div>
+                <div class="speed-select-wrap">
+                  <select id="player-speed-select" class="styled-select mini-select" title="Playback Speed">
+                    <option value="0.75">0.75x</option>
+                    <option value="1" selected>1.0x</option>
+                    <option value="1.25">1.25x</option>
+                    <option value="1.5">1.5x</option>
+                    <option value="2">2.0x</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Player Action Bar -->
+            <div class="player-actions-row">
+              <button class="btn btn-secondary btn-sm" id="btn-player-download" disabled title="Download audio file to computer">
+                <span>⬇️ Download</span>
+              </button>
+              <button class="btn btn-secondary btn-sm" id="btn-player-upload-sd" disabled title="Save this recording to ORBIT SD card">
+                <span>🛰️ Save to SD</span>
+              </button>
+              <button class="btn btn-secondary btn-sm" id="btn-player-upload-firebase" disabled title="Upload recording directly to Cloud Database & Storage">
+                <span id="player-upload-db-label">⚡ Push to Database</span>
+              </button>
+              <button class="btn btn-primary btn-sm" id="btn-player-transcribe" disabled title="Send to Voice-to-Text Studio">
+                <span>📝 Transcribe</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Hero Voice to Text & Transcripts Studio Card -->
+        <div class="vtt-studio-card">
+          <div class="vtt-card-header">
+            <div class="vtt-title-group">
+              <h4>📝 Live Voice-to-Text & Transcripts Studio</h4>
+              <span class="status-pill status-pill-active" id="vtt-status-pill">
+                <span class="pulse-dot-cyan"></span>
+                <span id="vtt-status-text">Ready for Voice Input</span>
+              </span>
+            </div>
+            <!-- Prominent Copy Button -->
+            <button class="btn btn-copy" id="btn-copy-transcript" title="Copy transcript to OS clipboard">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              <span id="copy-btn-text">📋 Copy to Clipboard</span>
+            </button>
+          </div>
+
+          <!-- Optional Cloud STT API Key Row -->
+          <div class="api-key-config-row" id="stt-api-config">
+            <span class="api-label">🔑 Cloud STT API:</span>
+            <input type="password" id="stt-api-key-input" placeholder="OpenAI Whisper or Gemini API Key (Optional for cloud transcription)..." class="api-input">
+            <button class="btn btn-secondary btn-sm" id="btn-save-api-key">Save Key</button>
+          </div>
+
+          <textarea id="ai-transcript" class="styled-textarea vtt-textarea" placeholder="Speak into ORBIT or click 'Live Browser Dictation' below. Transcriptions appear here instantly and can be copied to your clipboard with a single click..." rows="5"></textarea>
+
+          <div class="vtt-actions-deck">
+            <div class="vtt-left-actions">
+              <button class="btn btn-secondary btn-dictate" id="btn-browser-dictate" title="Speak into computer microphone using Web Speech API">
+                <span class="dictate-icon">🎙️</span>
+                <span id="dictate-btn-text">Live Browser Dictation</span>
+              </button>
+              <button class="btn btn-secondary" id="btn-extract-tasks" title="Extract bulleted action items and tasks from transcript">
+                <span>✨ Extract AI Tasks</span>
+              </button>
+            </div>
+            <div class="vtt-right-actions">
+              <button class="btn btn-secondary btn-icon" id="btn-download-txt" title="Download transcript as .TXT file">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                <span>Export .TXT</span>
+              </button>
+              <button class="btn btn-secondary btn-icon" id="btn-push-toast" title="Send transcript as notification back to ORBIT screen">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                <span>Push to Display</span>
+              </button>
+              <button class="btn btn-secondary btn-icon" id="btn-clear-transcript" title="Clear current transcript">
+                <span>🗑️ Clear</span>
+              </button>
+            </div>
           </div>
         </div>
+
+        <!-- SD Card Recordings Library Card -->
+        <div class="recordings-library-box">
+          <div class="library-header">
+            <h4>📁 SD Card Recordings Library</h4>
+            <span class="library-count" id="recordings-count-badge">0 Memos</span>
+          </div>
+          <div class="memos-list" id="memos-container">
+            <div class="empty-state">
+              <p>Loading voice memos from SD card...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Cloud Database & Storage Studio (Supabase 100% Free / Firebase) -->
+        <div class="firebase-studio-box" id="cloud-db-studio-box">
+          <div class="firebase-header">
+            <div class="firebase-title-group">
+              <span class="firebase-icon" id="cloud-db-icon">⚡</span>
+              <div>
+                <h4 id="cloud-db-title">Supabase Cloud Database & Storage <span class="badge" style="background: rgba(34,197,94,0.15); color: #22c55e; font-size: 0.65rem; border: 1px solid rgba(34,197,94,0.3); padding: 2px 6px; border-radius: 4px; margin-left: 6px;">100% Free • No CC</span></h4>
+                <p class="section-desc" style="margin:0; font-size:0.75rem;">Direct database sync: audio files stream directly to Supabase Storage, while metadata, transcripts, duration and live sensor telemetry are saved to PostgreSQL.</p>
+              </div>
+            </div>
+            <div class="firebase-header-controls">
+              <div class="db-provider-toggle" style="display: flex; gap: 4px; background: rgba(0,0,0,0.25); padding: 2px; border-radius: 6px; border: 1px solid var(--border-color);">
+                <button type="button" class="btn btn-xs active" id="btn-provider-supabase" style="font-size: 0.7rem; padding: 3px 8px; border-radius: 4px;">⚡ Supabase</button>
+                <button type="button" class="btn btn-xs" id="btn-provider-firebase" style="font-size: 0.7rem; padding: 3px 8px; border-radius: 4px;">🔥 Firebase</button>
+              </div>
+              <label class="checkbox-label" title="Automatically upload new voice recordings to Cloud Database immediately">
+                <input type="checkbox" id="cloud-auto-sync-checkbox" checked>
+                <span>⚡ Auto-Upload to Database Direct</span>
+              </label>
+              <span class="status-pill" id="cloud-db-status-pill">
+                <span class="status-dot disconnected" id="cloud-db-dot"></span>
+                <span id="cloud-db-status-text">Checking Database...</span>
+              </span>
+            </div>
+          </div>
+
+          <!-- Supabase Cloud Config Bar -->
+          <div class="firebase-config-bar" id="supabase-config-panel">
+            <div class="fb-config-row">
+              <div class="fb-field" style="flex: 2;">
+                <label for="sb-project-url">Supabase Project URL</label>
+                <input type="text" id="sb-project-url" class="styled-input fb-input" placeholder="https://xyzabcdefg.supabase.co">
+              </div>
+              <div class="fb-field" style="flex: 2;">
+                <label for="sb-anon-key">Public Anon Key (API Key)</label>
+                <input type="password" id="sb-anon-key" class="styled-input fb-input" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+              </div>
+              <div class="fb-field">
+                <label for="sb-storage-bucket">Storage Bucket</label>
+                <input type="text" id="sb-storage-bucket" class="styled-input fb-input" placeholder="orbit-recordings">
+              </div>
+              <div class="fb-field">
+                <label for="sb-table-name">Table Name</label>
+                <input type="text" id="sb-table-name" class="styled-input fb-input" placeholder="recordings">
+              </div>
+              <div class="fb-field fb-field-btn" style="display: flex; gap: 6px;">
+                <button class="btn btn-primary btn-sm" id="btn-save-supabase-config" title="Save Supabase Credentials">
+                  💾 Save Config
+                </button>
+                <button class="btn btn-secondary btn-sm" id="btn-copy-supabase-sql" title="Copy 1-Click PostgreSQL Table Creation Schema">
+                  📋 Copy SQL Schema
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Firebase Cloud Config Bar (Collapsible Alternative) -->
+          <div class="firebase-config-bar" id="firebase-config-panel" style="display: none;">
+            <div class="fb-config-row">
+              <div class="fb-field">
+                <label for="fb-project-id">Firebase Project ID</label>
+                <input type="text" id="fb-project-id" class="styled-input fb-input" placeholder="orbit-iot-companion">
+              </div>
+              <div class="fb-field">
+                <label for="fb-storage-bucket">Storage Bucket</label>
+                <input type="text" id="fb-storage-bucket" class="styled-input fb-input" placeholder="orbit-iot-companion.firebasestorage.app">
+              </div>
+              <div class="fb-field">
+                <label for="fb-api-key">Web API Key</label>
+                <input type="password" id="fb-api-key" class="styled-input fb-input" placeholder="AIzaSy...">
+              </div>
+              <div class="fb-field fb-field-btn">
+                <button class="btn btn-secondary btn-sm" id="btn-save-firebase-config">
+                  💾 Save Config
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cloud Records Explorer Table -->
+          <div class="firebase-records-container">
+            <div class="fb-records-header">
+              <div class="fb-records-title">
+                <h5>Cloud Database Records</h5>
+                <span class="library-count" id="cloud-records-badge">0 Cloud Records</span>
+              </div>
+              <button class="btn btn-secondary btn-sm" id="btn-refresh-cloud-db">
+                🔄 Refresh Cloud DB
+              </button>
+            </div>
+            <div class="firebase-records-list" id="cloud-records-list">
+              <div class="empty-state">
+                <p>Loading database records from Cloud Database...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB: ASK AI & LIVE DEVICE SYNC -->
+    <section class="tab-content" id="tab-ask-ai">
+      <div class="panel-section">
+        <div class="panel-header">
+          <div>
+            <h3>✨ ORBIT Ambient Intelligence — Ask AI</h3>
+            <p class="section-desc">Ask questions via text or voice. Answers stream live and automatically display on the ORBIT TFT screen while connected to Wi-Fi.</p>
+          </div>
+          <!-- Wi-Fi Sync Status Pill -->
+          <div class="header-status">
+            <div class="status-pill" id="ai-wifi-status-pill">
+              <span class="status-dot connected" id="ai-wifi-dot"></span>
+              <span id="ai-wifi-status-text">Wi-Fi Connected (Screen Sync Active)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="ask-ai-grid">
+          <!-- Left Deck: Question Input & Controls -->
+          <div class="control-box ask-ai-card">
+            <div class="ai-card-header">
+              <h4>💬 Question & Prompt Input</h4>
+              <div class="ai-engine-select-group">
+                <label for="ai-model-select" style="font-size:0.75rem; color:var(--color-text-muted);">Engine:</label>
+                <select id="ai-model-select" class="styled-select">
+                  <option value="gemini">Google Gemini Pro / Flash</option>
+                  <option value="openai">OpenAI GPT-4o / Whisper</option>
+                  <option value="orbit" selected>ORBIT Ambient Assistant (Built-in)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Optional Cloud API Key Row (for Gemini / OpenAI) -->
+            <div class="api-key-config-row" id="ai-key-container" style="display:none; margin-bottom:12px;">
+              <span class="api-label" id="ai-key-label">API Key:</span>
+              <input type="password" id="ai-api-key-input" class="api-input" placeholder="Enter API Key (saved in browser)...">
+              <button class="btn btn-secondary btn-sm" id="btn-save-ai-key">Save</button>
+            </div>
+
+            <!-- Quick Suggestion Chips -->
+            <div class="prompt-chips-row">
+              <button class="prompt-chip" data-prompt="What is the current temperature and comfort index on ORBIT?">🌤️ Environmental Check</button>
+              <button class="prompt-chip" data-prompt="Tell me an interesting astronomical fact about the Moon and ISS orbit.">🪐 Space Telemetry Fact</button>
+              <button class="prompt-chip" data-prompt="Give me 3 creative IoT and ambient computing ideas for the ESP32-S3.">💡 ESP32 Project Ideas</button>
+              <button class="prompt-chip" data-prompt="Guide me through a quick 1-minute mindfulness and breathing exercise.">🧘 1-Min Focus Breathing</button>
+            </div>
+
+            <!-- Query Input Box -->
+            <div class="query-input-wrap">
+              <textarea id="ai-query-input" class="styled-textarea ai-query-textarea" placeholder="Ask AI anything... (e.g., 'What is today's lunar phase?', 'Explain quantum entanglement simply', 'Give me productivity advice')" rows="4"></textarea>
+            </div>
+
+            <div class="ai-query-toolbar">
+              <div class="ai-toolbar-left">
+                <button class="btn btn-secondary btn-dictate" id="btn-ai-voice-input" title="Dictate prompt via browser microphone">
+                  <span class="dictate-icon">🎙️</span>
+                  <span id="ai-voice-btn-text">Voice Question</span>
+                </button>
+                <label class="checkbox-label" title="Automatically pushes answer to the device display when ready">
+                  <input type="checkbox" id="ai-auto-sync-device" checked>
+                  <span>Show Answer on ORBIT Screen</span>
+                </label>
+              </div>
+              <div class="ai-toolbar-right">
+                <button class="btn btn-primary" id="btn-submit-ai-query">
+                  <span>✨ Ask AI</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Deck: AI Answer Display -->
+          <div class="control-box ask-ai-card">
+            <div class="ai-card-header">
+              <h4>🤖 AI Answer & Screen Sync Deck</h4>
+              <span class="status-pill" id="ai-answer-status-pill">
+                <span class="pulse-dot-cyan"></span>
+                <span id="ai-answer-status-text">Ready for Question</span>
+              </span>
+            </div>
+
+            <!-- Response Box -->
+            <div class="ai-response-box" id="ai-response-display">
+              <p class="placeholder-text">AI answers will appear here in real-time. When connected to Wi-Fi, the answer will also be displayed on your ORBIT ESP32-S3 screen with UP/DOWN scroll controls!</p>
+            </div>
+
+            <!-- Action Controls -->
+            <div class="ai-response-actions">
+              <div class="response-actions-left">
+                <button class="btn btn-primary btn-sync-screen" id="btn-push-ai-screen" title="Push this answer directly to the ORBIT TFT screen">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                  <span>📺 Show on ORBIT Screen</span>
+                </button>
+              </div>
+              <div class="response-actions-right">
+                <button class="btn btn-secondary" id="btn-copy-ai-answer" title="Copy answer to clipboard">
+                  <span>📋 Copy</span>
+                </button>
+                <button class="btn btn-secondary" id="btn-speak-ai-answer" title="Read answer aloud using text-to-speech">
+                  <span>🔊 Read Aloud</span>
+                </button>
+                <button class="btn btn-secondary btn-icon" id="btn-clear-ai-answer" title="Clear response">
+                  <span>🗑️</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </section>
 
