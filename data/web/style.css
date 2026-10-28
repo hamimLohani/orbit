@@ -3155,3 +3155,421 @@ body {
   display: flex;
   gap: 8px;
 }
+
+/* ==============================================================================
+   COMPREHENSIVE MOBILE VIEWPORT OPTIMIZATIONS (Smartphones & Handhelds)
+   ============================================================================== */
+
+/* Base Mobile Bottom Sticky Dock */
+.mobile-bottom-dock {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  background: rgba(7, 10, 17, 0.94);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-top: 1px solid rgba(0, 240, 255, 0.28);
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.7);
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+  justify-content: space-around;
+  align-items: center;
+}
+
+.dock-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 6px 4px;
+  border-radius: 12px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dock-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.dock-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dock-btn:active {
+  transform: scale(0.92);
+}
+
+.dock-btn.active {
+  color: var(--color-neon-cyan);
+  background: rgba(0, 240, 255, 0.12);
+  box-shadow: inset 0 0 12px rgba(0, 240, 255, 0.25);
+}
+
+.dock-btn.active .dock-icon {
+  transform: scale(1.15);
+}
+
+/* Mirror Zoom Toggle Button */
+.btn-mirror-zoom {
+  background: rgba(0, 240, 255, 0.12);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  color: var(--color-neon-cyan);
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  margin-left: auto;
+  transition: all 0.15s ease;
+  touch-action: manipulation;
+}
+
+.btn-mirror-zoom:hover,
+.btn-mirror-zoom:active {
+  background: rgba(0, 240, 255, 0.3);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
+}
+
+.screen-mirror-frame.zoomed {
+  transform: scale(1.14);
+  margin: 18px auto 26px;
+  box-shadow: 0 0 40px rgba(0, 240, 255, 0.45);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (max-width: 768px) {
+  /* Show Mobile Dock */
+  .mobile-bottom-dock {
+    display: flex;
+  }
+
+  /* Safe Area & Container Padding */
+  body {
+    padding-bottom: calc(75px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .app-container {
+    padding: 12px 12px calc(80px + env(safe-area-inset-bottom, 0px));
+    max-width: 100%;
+  }
+
+  /* Mobile Header */
+  .header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+    gap: 8px;
+  }
+
+  .brand {
+    gap: 10px;
+  }
+
+  .brand-orbit-logo {
+    width: 36px;
+    height: 36px;
+  }
+
+  .outer-ring {
+    width: 34px;
+    height: 34px;
+  }
+
+  .inner-ring {
+    width: 20px;
+    height: 20px;
+  }
+
+  .brand-text h1 {
+    font-size: 1.2rem;
+  }
+
+  .brand-text .tagline {
+    display: none; /* Hide tagline on mobile for cleaner top bar */
+  }
+
+  .header-actions {
+    gap: 6px;
+  }
+
+  #btn-ping span {
+    display: none; /* Icon only on mobile */
+  }
+
+  #btn-ping {
+    padding: 8px;
+    width: 36px;
+    height: 36px;
+    justify-content: center;
+  }
+
+  .status-pill {
+    padding: 4px 8px;
+    font-size: 0.72rem;
+  }
+
+  /* Nav Tabs: Compact horizontal swipe on mobile */
+  .nav-tabs {
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    gap: 6px;
+    padding-bottom: 8px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .nav-tab {
+    scroll-snap-align: start;
+    white-space: nowrap;
+    padding: 8px 14px;
+    font-size: 0.82rem;
+    min-height: 40px;
+    touch-action: manipulation;
+  }
+
+  /* Environmental Glance: 2x2 Clean Widget Grid */
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .metric-card {
+    padding: 12px !important;
+    border-radius: 12px !important;
+  }
+
+  .metric-value {
+    font-size: 1.45rem !important;
+  }
+
+  .metric-title {
+    font-size: 0.76rem !important;
+  }
+
+  .metric-badge {
+    font-size: 0.65rem !important;
+    padding: 1px 5px !important;
+  }
+
+  .metric-sub {
+    font-size: 0.68rem !important;
+    margin-top: 4px !important;
+  }
+
+  /* Master Cockpit Grid */
+  .master-cockpit-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .master-card {
+    padding: 16px !important;
+    border-radius: 16px !important;
+  }
+
+  /* Screen Mirror Frame */
+  .screen-mirror-frame {
+    max-width: 260px;
+    margin: 0 auto 12px;
+  }
+
+  .screen-mirror-display {
+    height: 180px;
+  }
+
+  /* Fast Apps Bar: Mobile Swipe */
+  .fast-apps-bar {
+    margin-top: 8px;
+    margin-bottom: 12px;
+  }
+
+  .fast-apps-scroll {
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    gap: 8px;
+    padding-bottom: 6px;
+  }
+
+  .fast-app-btn {
+    scroll-snap-align: start;
+    white-space: nowrap;
+    padding: 8px 14px;
+    font-size: 0.82rem;
+    min-height: 40px;
+    touch-action: manipulation;
+  }
+
+  /* Tactile Handheld D-Pad */
+  .dpad-controller-wrap {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 14px !important;
+    margin-top: 10px !important;
+  }
+
+  .dpad-cluster {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .dpad-middle-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .dpad-btn {
+    width: 54px !important;
+    height: 54px !important;
+    font-size: 1.25rem !important;
+    border-radius: 14px !important;
+    touch-action: manipulation !important;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .dpad-btn:active {
+    transform: scale(0.92) !important;
+    background: rgba(0, 240, 255, 0.35) !important;
+    border-color: var(--color-neon-cyan) !important;
+    box-shadow: 0 0 16px var(--color-neon-cyan) !important;
+  }
+
+  .dpad-actions-column {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 8px !important;
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .remote-action-btn {
+    flex: 1;
+    min-height: 44px !important;
+    padding: 8px 12px !important;
+    touch-action: manipulation !important;
+    border-radius: 10px !important;
+  }
+
+  .dpad-keyboard-hint {
+    display: none; /* Hide desktop keyboard hints on mobile phones */
+  }
+
+  /* Conversational AI Hub on Mobile */
+  .ai-chat-messages-container {
+    max-height: 250px !important;
+    padding: 10px !important;
+  }
+
+  .chat-bubble {
+    font-size: 0.86rem !important;
+    padding: 9px 12px !important;
+    line-height: 1.4 !important;
+  }
+
+  .ai-input-composer {
+    gap: 6px;
+    align-items: flex-end;
+  }
+
+  /* Prevent Safari from auto-zooming input fields */
+  .ai-text-field,
+  .styled-input,
+  .styled-textarea,
+  .styled-select,
+  input[type="text"],
+  input[type="password"] {
+    font-size: 16px !important;
+  }
+
+  .btn-voice-dictate {
+    min-height: 44px !important;
+    padding: 8px 14px !important;
+    touch-action: manipulation;
+  }
+
+  #btn-submit-ai-query {
+    min-height: 44px !important;
+    padding: 8px 14px !important;
+    touch-action: manipulation;
+  }
+
+  /* Master Announcer / Toast Bar */
+  .announcer-input-row {
+    flex-direction: row;
+    gap: 6px;
+  }
+
+  #btn-master-push-toast {
+    min-height: 40px;
+    padding: 6px 14px;
+    touch-action: manipulation;
+  }
+
+  /* Simulated 16-LED Ring Visualizer */
+  .virtual-ring-preview-box {
+    transform: scale(0.92);
+    margin: 0 auto 8px !important;
+  }
+
+  /* 1-Click Mood Theme Chips */
+  .theme-chips-bar {
+    gap: 6px !important;
+  }
+
+  .theme-chip {
+    padding: 7px 12px !important;
+    font-size: 0.78rem !important;
+    min-height: 36px !important;
+    touch-action: manipulation;
+  }
+
+  .btn-pct {
+    padding: 7px 12px !important;
+    font-size: 0.8rem !important;
+    min-height: 36px !important;
+    touch-action: manipulation;
+  }
+
+  #btn-master-rec {
+    min-height: 48px !important;
+    font-size: 0.9rem !important;
+    touch-action: manipulation;
+  }
+
+  /* Secondary Telemetry Grid */
+  .device-stats-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    margin-top: 14px !important;
+  }
+
+  .info-card {
+    padding: 14px !important;
+    border-radius: 12px !important;
+  }
+}

@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+  <meta name="theme-color" content="#070a11">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
   <title>ORBIT OS — Ambient Companion Dashboard</title>
   <meta name="description" content="Live companion dashboard and telemetry center for ORBIT ESP32-S3 ambient sensing embedded OS">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -97,7 +101,7 @@
          ========================================================================= -->
     <main class="tab-content active" id="tab-dashboard">
       <!-- Top Primary Metrics Grid -->
-      <section class="metrics-grid">
+      <section class="metrics-grid" id="climate-section">
         <!-- Temperature Card -->
         <div class="metric-card card-cyan">
           <div class="metric-header">
@@ -169,7 +173,7 @@
         <!-- ==============================================
              COLUMN 1: HARDWARE DEVICE TWIN & REMOTE
              ============================================== -->
-        <div class="master-card">
+        <div class="master-card" id="card-master-remote">
           <div class="master-card-header">
             <div class="master-header-title">
               <span class="master-icon">🎮</span>
@@ -185,6 +189,7 @@
               <span class="mirror-dot-yellow"></span>
               <span class="mirror-dot-green"></span>
               <span class="mirror-title-tag" id="mirror-app-tag">ORBIT: HOME</span>
+              <button type="button" class="btn-mirror-zoom" id="btn-mirror-zoom" title="Toggle Zoom on Mobile">🔍</button>
             </div>
             <div class="screen-mirror-display" id="screen-mirror-display">
               <div class="mirror-top-status">
@@ -266,7 +271,7 @@
         <!-- ==============================================
              COLUMN 2: CONVERSATIONAL AI & LIVE SCREEN ANNOUNCER
              ============================================== -->
-        <div class="master-card master-card-ai">
+        <div class="master-card master-card-ai" id="card-master-ai">
           <div class="master-card-header">
             <div class="master-header-title">
               <span class="master-icon">🤖</span>
@@ -346,8 +351,7 @@
         <!-- ==============================================
              COLUMN 3: ATMOSPHERE, LIGHTING & AUDIO
              ============================================== -->
-        <div class="master-card">
-          <!-- Ambient Lighting Section -->
+        <div class="master-card" id="card-master-atmosphere">
           <div class="master-card-header">
             <div class="master-header-title">
               <span class="master-icon">🌈</span>
@@ -1566,6 +1570,30 @@
     </section>
 
   </div>
+
+  <!-- Mobile Bottom Sticky Navigation Dock (Thumb-Optimized Controls) -->
+  <nav class="mobile-bottom-dock" id="mobile-bottom-dock" aria-label="Mobile Bottom Navigation">
+    <button type="button" class="dock-btn active" data-dock="remote" title="Remote & Display">
+      <span class="dock-icon">🎮</span>
+      <span class="dock-label">Remote</span>
+    </button>
+    <button type="button" class="dock-btn" data-dock="ai" title="Ask AI & Voice">
+      <span class="dock-icon">🤖</span>
+      <span class="dock-label">Ask AI</span>
+    </button>
+    <button type="button" class="dock-btn" data-dock="lights" title="RGB Atmosphere">
+      <span class="dock-icon">💡</span>
+      <span class="dock-label">Lights</span>
+    </button>
+    <button type="button" class="dock-btn" data-dock="climate" title="Climate & Weather">
+      <span class="dock-icon">⛅</span>
+      <span class="dock-label">Climate</span>
+    </button>
+    <button type="button" class="dock-btn" data-dock="wifi" title="Settings & Wi-Fi">
+      <span class="dock-icon">📶</span>
+      <span class="dock-label">Wi-Fi</span>
+    </button>
+  </nav>
 
   <script src="app.js"></script>
 </body>

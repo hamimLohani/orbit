@@ -11,7 +11,10 @@ const char WIFI_SETUP_HTML[] PROGMEM = R"rawliteral(
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0e17">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>ORBIT OS — Wi-Fi Network Setup</title>
   <style>
     :root {
@@ -241,9 +244,11 @@ const char WIFI_SETUP_HTML[] PROGMEM = R"rawliteral(
       background: var(--input-bg);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 11px 14px;
+      padding: 12px 14px;
       color: #fff;
-      font-size: 0.95rem;
+      font-size: 16px;
+      min-height: 46px;
+      touch-action: manipulation;
       outline: none;
       transition: border-color 0.2s, box-shadow 0.2s;
     }

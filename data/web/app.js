@@ -73,6 +73,7 @@ class OrbitWebController {
     this.setupPingButton();
     this.setupNetworkTab();
     this.setupSettingsTab();
+    this.setupMobileOptimizations();
     this.syncCloudKeysFromDevice();
   }
 
@@ -226,18 +227,82 @@ class OrbitWebController {
   }
 
   // Tab Switching
+  switchTab(targetTab) {
+    const tabs = document.querySelectorAll('.nav-tab');
+    tabs.forEach(t => {
+      if (t.dataset.tab === targetTab) {
+        t.classList.add('active');
+      } else {
+        t.classList.remove('active');
+      }
+    });
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    const panel = document.getElementById(`tab-${targetTab}`);
+    if (panel) panel.classList.add('active');
+  }
+
   setupTabs() {
     const tabs = document.querySelectorAll('.nav-tab');
     tabs.forEach(tab => {
       tab.addEventListener('click', () => {
-        tabs.forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-
-        tab.classList.add('active');
-        const target = tab.dataset.tab;
-        const panel = document.getElementById(`tab-${target}`);
-        if (panel) panel.classList.add('active');
+        this.switchTab(tab.dataset.tab);
       });
+    });
+  }
+
+  // Comprehensive Mobile Optimizations & Touch Navigation
+  setupMobileOptimizations() {
+    // 1. Mobile Bottom Quick Dock Navigation
+    const dockButtons = document.querySelectorAll('.mobile-bottom-dock .dock-btn');
+    dockButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        if ('vibrate' in navigator) {
+          try { navigator.vibrate(15); } catch (e) {}
+        }
+        dockButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const dockTarget = btn.dataset.dock;
+        if (dockTarget === 'remote') {
+          this.switchTab('dashboard');
+          const el = document.getElementById('card-master-remote');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else if (dockTarget === 'ai') {
+          this.switchTab('dashboard');
+          const el = document.getElementById('card-master-ai');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else if (dockTarget === 'lights') {
+          this.switchTab('dashboard');
+          const el = document.getElementById('card-master-atmosphere');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else if (dockTarget === 'climate') {
+          this.switchTab('dashboard');
+          const el = document.getElementById('climate-section');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else if (dockTarget === 'wifi') {
+          this.switchTab('settings');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      });
+    });
+
+    // 2. Screen Mirror Zoom Button
+    const btnZoom = document.getElementById('btn-mirror-zoom');
+    const mirrorFrame = document.querySelector('.screen-mirror-frame');
+    if (btnZoom && mirrorFrame) {
+      btnZoom.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if ('vibrate' in navigator) {
+          try { navigator.vibrate(15); } catch (e) {}
+        }
+        mirrorFrame.classList.toggle('zoomed');
+        btnZoom.textContent = mirrorFrame.classList.contains('zoomed') ? '🔍✕' : '🔍';
+      });
+    }
+
+    // 3. Fast touch response for interactive controls (eliminate 300ms tap delay)
+    document.querySelectorAll('.dpad-btn, .remote-action-btn, .fast-app-btn, .theme-chip, .prompt-chip, .toast-chip, .dock-btn').forEach(el => {
+      el.style.touchAction = 'manipulation';
     });
   }
 
