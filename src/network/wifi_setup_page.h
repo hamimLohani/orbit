@@ -490,6 +490,7 @@ const char WIFI_SETUP_HTML[] PROGMEM = R"rawliteral(
     }
 
     // Fetch and render scanned Wi-Fi networks
+    let autoRetryCount = 0;
     async function fetchNetworks() {
       btnRescan.classList.add('spinning');
       try {
@@ -499,6 +500,13 @@ const char WIFI_SETUP_HTML[] PROGMEM = R"rawliteral(
         if (data.scanning) {
           // Still scanning, retry after 800ms
           setTimeout(fetchNetworks, 800);
+          return;
+        }
+
+        // If no networks returned yet, auto-retry a few times (device scan may be completing)
+        if ((!data.networks || data.networks.length === 0) && autoRetryCount < 4) {
+          autoRetryCount++;
+          setTimeout(fetchNetworks, 1200);
           return;
         }
 
@@ -550,7 +558,9 @@ const char WIFI_SETUP_HTML[] PROGMEM = R"rawliteral(
 
     // Manual Rescan Button
     btnRescan.addEventListener('click', () => {
-      netList.innerHTML = '<div class="empty-state">Scanning wireless networks...</div>';
+      autoRetryCount = 0;
+      btnRescan.classList.add('spinning');
+      netList.innerHTML = '<div class="empty-state"><div class="spinner" style="margin: 0 auto 12px; width: 24px; height: 24px; border: 2px solid var(--border); border-top-color: var(--cyan); border-radius: 50%; animation: spin 1s linear infinite;"></div>Scanning wireless networks...</div>';
       fetch('/api/wifi/scan', { method: 'POST' }).then(() => {
         setTimeout(fetchNetworks, 1200);
       }).catch(() => fetchNetworks());

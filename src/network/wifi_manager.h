@@ -54,7 +54,7 @@ private:
     ~WifiManager() = default;
 
     void startStation();
-    void handleBackgroundScan();
+    void performScan();
 
     DNSServer _dnsServer;
     bool _apActive = false;
