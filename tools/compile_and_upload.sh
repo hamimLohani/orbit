@@ -64,11 +64,16 @@ else
 
   if [[ -n "${ARDUINO_CLI}" ]]; then
     echo -e "${CYAN}Found Arduino CLI at: ${ARDUINO_CLI}${NC}"
-    FQBN="esp32:esp32:esp32s3"
+    FQBN="esp32:esp32:esp32s3:CDCOnBoot=cdc,PSRAM=opi,PartitionScheme=huge_app"
+    USER_LIBS="${HOME}/Developer/Arduino/libraries"
+    if [[ ! -d "${USER_LIBS}" ]]; then
+      USER_LIBS="${HOME}/Document/Arduino/libraries"
+    fi
     
     "${ARDUINO_CLI}" compile \
       --fqbn "${FQBN}" \
       --output-dir "${BUILD_DIR}" \
+      --libraries "${USER_LIBS}" \
       --libraries "${ROOT_DIR}/src" \
       "${ROOT_DIR}/orbit.ino"
 

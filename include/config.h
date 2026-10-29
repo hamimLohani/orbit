@@ -239,7 +239,7 @@
 #endif
 
 #define DEFAULT_AP_SSID       "ORBIT-Setup"
-#define DEFAULT_AP_PASS       "orbit1234"
+#define DEFAULT_AP_PASS       ""   // Empty = Open AP (connect directly from phone without password)
 #define MDNS_HOSTNAME         "orbit"
 #define HTTP_PORT             80
 #define WS_PORT               80

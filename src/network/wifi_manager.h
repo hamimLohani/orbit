@@ -31,6 +31,7 @@ public:
     bool isConnected() const;
     bool isApActive() const { return _apActive; }
     bool isConnecting() const { return _connecting; }
+    String getConnectStatus() const { return _connectStatus; }
     int8_t getRssi() const;
     String getIpAddress() const;
     String getSsid() const;
@@ -42,25 +43,31 @@ public:
     void forgetWifi();
     void startApFallback();
 
-    // Asynchronous Wi-Fi Scanning
+    // Synchronous & Asynchronous Wi-Fi Scanning
+    int16_t scanSync();
     void startScan();
     void requestScan() { _scanRequested = true; }
     bool isScanning() const { return _scanning; }
     const std::vector<ScannedNetwork>& getScannedNetworks() const { return _scannedNetworks; }
     String getScannedNetworksJson();
+    String buildNetworkSelectHtml();
+    String buildNetworkCardsHtml();
 
 private:
     WifiManager() = default;
     ~WifiManager() = default;
 
     void startStation();
-    void performScan();
+    void populateScannedNetworks(int16_t count);
 
     DNSServer _dnsServer;
     bool _apActive = false;
     bool _connecting = false;
     bool _scanning = false;
     bool _scanRequested = false;
+    String _connectStatus = "idle"; // "idle", "connecting", "connected", "failed", "timeout", "not_found"
+    String _pendingSsid = "";
+    String _pendingPass = "";
     uint32_t _scanStartTime = 0;
     uint32_t _lastScanTime = 0;
     uint32_t _lastCheckTime = 0;

@@ -92,7 +92,13 @@ void NetworkApp::renderPage0(RenderEngine& gfx) {
         gfx.drawCard(6, 89, 116, 48, COLOR_SLATE_MID, COLOR_SLATE_BORDER);
         gfx.drawText(12, 94, "CAPTIVE PORTAL", COLOR_TEXT_MUTED, 1);
         gfx.drawText(12, 106, "Browse 192.168.4.1", COLOR_NEON_MINT, 1);
-        gfx.drawText(12, 118, "Pass: orbit1234", COLOR_TEXT_LIGHT, 1);
+        if (strlen(DEFAULT_AP_PASS) >= 8) {
+            char passBuf[24];
+            snprintf(passBuf, sizeof(passBuf), "Pass: %s", DEFAULT_AP_PASS);
+            gfx.drawText(12, 118, passBuf, COLOR_TEXT_LIGHT, 1);
+        } else {
+            gfx.drawText(12, 118, "Pass: (Open/None)", COLOR_TEXT_LIGHT, 1);
+        }
 
         gfx.drawTextCentered(64, 147, "L/R:Page  OK:Connect", COLOR_TEXT_MUTED, 1);
     }

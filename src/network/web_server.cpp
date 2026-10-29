@@ -37,43 +37,6 @@ static void sendDashboardHtml(AsyncWebServerRequest* request) {
     request->send(res);
 }
 
-static String processWifiSetupHtml(const String& var) {
-    if (var == "NETWORKS_LIST") {
-        const auto& networks = WifiManager::getInstance().getScannedNetworks();
-        if (networks.empty()) {
-            return "<div class=\"empty-state\"><div class=\"spinner\" style=\"margin: 0 auto 12px; width: 24px; height: 24px; border: 2px solid var(--border); border-top-color: var(--cyan); border-radius: 50%; animation: spin 1s linear infinite;\"></div>Scanning for nearby networks...</div>";
-        }
-        String html = "";
-        for (const auto& net : networks) {
-            String lockSvg = net.secure ? "<svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"2.5\"><rect x=\"3\" y=\"11\" width=\"18\" height=\"11\" rx=\"2\" ry=\"2\"></rect><path d=\"M7 11V7a5 5 0 0 1 10 0v4\"></path></svg>" : "";
-            int bars = net.rssi > -60 ? 4 : (net.rssi > -70 ? 3 : (net.rssi > -80 ? 2 : 1));
-            String barColor = net.rssi > -65 ? "var(--mint)" : (net.rssi > -78 ? "var(--cyan)" : "var(--red)");
-            String sigSvg = "<svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"" + barColor + "\">";
-            sigSvg += "<rect x=\"2\" y=\"16\" width=\"3\" height=\"6\" rx=\"1\" opacity=\"" + String(bars >= 1 ? "1" : "0.25") + "\"/>";
-            sigSvg += "<rect x=\"7\" y=\"12\" width=\"3\" height=\"10\" rx=\"1\" opacity=\"" + String(bars >= 2 ? "1" : "0.25") + "\"/>";
-            sigSvg += "<rect x=\"12\" y=\"8\" width=\"3\" height=\"14\" rx=\"1\" opacity=\"" + String(bars >= 3 ? "1" : "0.25") + "\"/>";
-            sigSvg += "<rect x=\"17\" y=\"4\" width=\"3\" height=\"18\" rx=\"1\" opacity=\"" + String(bars >= 4 ? "1" : "0.25") + "\"/>";
-            sigSvg += "</svg>";
-
-            String cleanSsid = net.ssid;
-            cleanSsid.replace("\\", "\\\\");
-            cleanSsid.replace("'", "\\'");
-            cleanSsid.replace("\"", "&quot;");
-
-            String displaySsid = net.ssid;
-            displaySsid.replace("&", "&amp;");
-            displaySsid.replace("<", "&lt;");
-            displaySsid.replace(">", "&gt;");
-
-            html += "<div class=\"net-item\" onclick=\"selectNetwork(this, '" + cleanSsid + "')\">";
-            html += "<div class=\"net-name\">" + lockSvg + "<span>" + displaySsid + "</span></div>";
-            html += "<div class=\"net-meta\"><span class=\"net-rssi\">" + String(net.rssi) + " dBm</span>" + sigSvg + "</div>";
-            html += "</div>";
-        }
-        return html;
-    }
-    return String();
-}
 
 static void sendStyleCss(AsyncWebServerRequest* request) {
     if (LittleFS.exists("/web/style.css")) {
@@ -135,36 +98,40 @@ void WebServer::init() {
 }
 
 void WebServer::setupRoutes() {
+    auto sendWifiSetupHtml = [](AsyncWebServerRequest* request) {
+        if (WifiManager::getInstance().getScannedNetworks().empty()) {
+            WifiManager::getInstance().scanSync();
+        }
+        request->send_P(200, "text/html", WIFI_SETUP_HTML, [](const String& var) -> String {
+            if (var == "WIFI_DROPDOWN") {
+                return WifiManager::getInstance().buildNetworkSelectHtml();
+            }
+            if (var == "NETWORKS_LIST") {
+                return WifiManager::getInstance().buildNetworkCardsHtml();
+            }
+            return String();
+        });
+    };
+
     // 1. Wi-Fi Provisioning & Captive Portal Setup Page
-    _server.on("/wifi", HTTP_GET, [](AsyncWebServerRequest* request) {
-        request->send_P(200, "text/html", WIFI_SETUP_HTML);
-    });
+    _server.on("/wifi", HTTP_GET, sendWifiSetupHtml);
     _server.on("/setup", HTTP_GET, [](AsyncWebServerRequest* request) {
         request->redirect("/wifi");
     });
 
     // 2. OS Captive Portal Probe Endpoints (Apple iOS/macOS, Android, Windows)
-    _server.on("/hotspot-detect.html", HTTP_GET, [](AsyncWebServerRequest* request) {
-        request->redirect("/wifi");
-    });
-    _server.on("/generate_204", HTTP_GET, [](AsyncWebServerRequest* request) {
-        request->redirect("/wifi");
-    });
-    _server.on("/gen_204", HTTP_GET, [](AsyncWebServerRequest* request) {
-        request->redirect("/wifi");
-    });
-    _server.on("/canonical.html", HTTP_GET, [](AsyncWebServerRequest* request) {
-        request->redirect("/wifi");
-    });
-    _server.on("/ncsi.txt", HTTP_GET, [](AsyncWebServerRequest* request) {
-        request->send(200, "text/plain", "Microsoft NCSI");
-    });
-    _server.on("/connecttest.txt", HTTP_GET, [](AsyncWebServerRequest* request) {
-        request->redirect("/wifi");
-    });
-    _server.on("/redirect", HTTP_GET, [](AsyncWebServerRequest* request) {
-        request->redirect("/wifi");
-    });
+    auto captiveRedirect = [](AsyncWebServerRequest* request) {
+        request->redirect("http://" + WiFi.softAPIP().toString() + "/wifi");
+    };
+
+    _server.on("/hotspot-detect.html", HTTP_GET, captiveRedirect);
+    _server.on("/generate_204", HTTP_GET, captiveRedirect);
+    _server.on("/gen_204", HTTP_GET, captiveRedirect);
+    _server.on("/canonical.html", HTTP_GET, captiveRedirect);
+    _server.on("/ncsi.txt", HTTP_GET, captiveRedirect);
+    _server.on("/connecttest.txt", HTTP_GET, captiveRedirect);
+    _server.on("/success.txt", HTTP_GET, captiveRedirect);
+    _server.on("/redirect", HTTP_GET, captiveRedirect);
 
     // 3. Web OTA Firmware & Filesystem Update Studio (GET /update)
     _server.on("/update", HTTP_GET, [](AsyncWebServerRequest* request) {
@@ -241,10 +208,10 @@ void WebServer::setupRoutes() {
     }
 
     // 4. Root / Landing Page Handler
-    _server.on("/", HTTP_GET, [](AsyncWebServerRequest* request) {
+    _server.on("/", HTTP_GET, [sendWifiSetupHtml](AsyncWebServerRequest* request) {
         // Query param override: ?setup forces Wi-Fi setup page
         if (request->hasParam("setup")) {
-            request->send_P(200, "text/html", WIFI_SETUP_HTML, processWifiSetupHtml);
+            sendWifiSetupHtml(request);
             return;
         }
 
@@ -254,20 +221,22 @@ void WebServer::setupRoutes() {
             return;
         }
 
-        // If connected to home Wi-Fi station, always serve dashboard
-        if (WifiManager::getInstance().isConnected()) {
-            sendDashboardHtml(request);
-            return;
-        }
-
         // If in SoftAP mode and not connected to home Wi-Fi, serve setup portal
-        // (which features a 1-click button to launch the dashboard directly in SoftAP mode)
-        if (WifiManager::getInstance().isApActive()) {
-            request->send_P(200, "text/html", WIFI_SETUP_HTML, processWifiSetupHtml);
+        if (WifiManager::getInstance().isApActive() && !WifiManager::getInstance().isConnected()) {
+            sendWifiSetupHtml(request);
             return;
         }
 
         sendDashboardHtml(request);
+    });
+
+    // 5. Captive Portal Catch-All Fallback (redirect unknown requests in AP mode)
+    _server.onNotFound([](AsyncWebServerRequest* request) {
+        if (WifiManager::getInstance().isApActive() && !WifiManager::getInstance().isConnected()) {
+            request->redirect("http://" + WiFi.softAPIP().toString() + "/wifi");
+        } else {
+            request->send(404, "text/plain", "Not Found");
+        }
     });
 }
 
@@ -596,7 +565,7 @@ void WebServer::setupRestApi() {
 
     // 6. Trigger New Wi-Fi Scan (POST /api/wifi/scan)
     _server.on("/api/wifi/scan", HTTP_POST, [](AsyncWebServerRequest* request) {
-        WifiManager::getInstance().requestScan();
+        WifiManager::getInstance().startScan();
         request->send(200, "application/json", "{\"status\":\"scanning\"}");
     });
 
@@ -605,6 +574,7 @@ void WebServer::setupRestApi() {
         JsonDocument doc;
         doc["connected"] = WifiManager::getInstance().isConnected();
         doc["connecting"] = WifiManager::getInstance().isConnecting();
+        doc["connect_status"] = WifiManager::getInstance().getConnectStatus();
         doc["ap_active"] = WifiManager::getInstance().isApActive();
         doc["ssid"] = WifiManager::getInstance().getSsid();
         doc["ip"] = WifiManager::getInstance().getIpAddress();

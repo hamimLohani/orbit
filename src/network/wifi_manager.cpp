@@ -16,16 +16,19 @@ void WifiManager::startStation() {
     String pass = SettingsManager::getInstance().getWifiPass();
     bool offlineMode = SettingsManager::getInstance().getOfflineMode();
 
-    WiFi.setSleep(false); // Low latency for WebSocket & HTTP
-    WiFi.setAutoReconnect(false); // Disable auto-reconnect to prevent ESP-IDF background connection locks
+    WiFi.setSleep(false);
+    WiFi.setAutoReconnect(false);
 
-    bool isDummySsid = (ssid.length() == 0 || ssid == "ORBIT_WiFi" || ssid == "YOUR_WIFI_SSID" || ssid == "YOUR_SSID");
+    bool isDummySsid = (ssid.length() == 0 || ssid == "ORBIT_WiFi" || ssid == "YOUR_WIFI_SSID" || ssid == "YOUR_SSID" || ssid == "YourWiFiSSID");
     bool isDummyPass = (pass == "SuperSecretPassword" || pass == "12345678");
 
     if (!offlineMode && !isDummySsid && !isDummyPass) {
         WiFi.mode(WIFI_STA);
-        WiFi.begin(ssid.c_str(), pass.c_str());
+        WiFi.begin(ssid.c_str(), pass.length() > 0 ? pass.c_str() : nullptr);
         _connecting = true;
+        _connectStatus = "connecting";
+        _pendingSsid = ssid;
+        _pendingPass = pass;
         _connectStartTime = millis();
         _apActive = false;
         Serial.printf("[WiFi] Attempting connection to network: %s\n", ssid.c_str());
@@ -33,20 +36,95 @@ void WifiManager::startStation() {
         if (offlineMode) {
             Serial.println("[WiFi] Offline mode active — skipping station connection, starting setup hotspot.");
         } else {
-            Serial.println("[WiFi] No custom WiFi configured or placeholder password, start AP mode for initial setup.");
+            Serial.println("[WiFi] No saved Wi-Fi credentials found. Starting ORBIT-Setup hotspot.");
         }
         startApFallback();
     }
 }
 
+void WifiManager::populateScannedNetworks(int16_t count) {
+    if (count <= 0) return;
+
+    std::vector<ScannedNetwork> newNetworks;
+    for (int i = 0; i < count; ++i) {
+        String s = WiFi.SSID(i);
+        s.trim();
+        if (s.length() == 0) continue;
+
+        bool exists = false;
+        for (auto& item : newNetworks) {
+            if (item.ssid == s) {
+                exists = true;
+                if (WiFi.RSSI(i) > item.rssi) {
+                    item.rssi = WiFi.RSSI(i);
+                    item.secure = (WiFi.encryptionType(i) != WIFI_AUTH_OPEN);
+                    item.channel = WiFi.channel(i);
+                }
+                break;
+            }
+        }
+        if (!exists) {
+            ScannedNetwork net;
+            net.ssid = s;
+            net.rssi = WiFi.RSSI(i);
+            net.secure = (WiFi.encryptionType(i) != WIFI_AUTH_OPEN);
+            net.channel = WiFi.channel(i);
+            newNetworks.push_back(net);
+        }
+    }
+
+    if (!newNetworks.empty()) {
+        std::sort(newNetworks.begin(), newNetworks.end(), [](const ScannedNetwork& a, const ScannedNetwork& b) {
+            return a.rssi > b.rssi;
+        });
+        _scannedNetworks = std::move(newNetworks);
+        Serial.printf("[WiFi] Successfully cached %u unique wireless networks.\n", (unsigned)_scannedNetworks.size());
+    }
+}
+
+int16_t WifiManager::scanSync() {
+    Serial.println("[WiFi] Starting standard synchronous Wi-Fi scan (AgroSense pattern)...");
+    WiFi.enableSTA(true);
+    WiFi.scanDelete();
+
+    // Standard synchronous scan with factory TX power and default parameters
+    int16_t n = WiFi.scanNetworks(false /* blocking */, true /* show_hidden */);
+    Serial.printf("[WiFi] WiFi.scanNetworks returned: %d networks.\n", n);
+
+    if (n > 0) {
+        populateScannedNetworks(n);
+        char toastMsg[32];
+        snprintf(toastMsg, sizeof(toastMsg), "%d Nets Found", n);
+        RenderEngine::getInstance().showToast("WI-FI SCAN", toastMsg, COLOR_NEON_MINT, 3000);
+    } else {
+        Serial.println("[WiFi] Scan returned 0 networks.");
+        RenderEngine::getInstance().showToast("WI-FI SCAN", "0 Nets Found", COLOR_NEON_AMBER, 3000);
+    }
+    WiFi.scanDelete();
+    _lastScanTime = millis();
+    return n;
+}
+
 void WifiManager::startApFallback() {
     _connecting = false;
+    _connectStatus = "idle";
     WiFi.setAutoReconnect(false);
-    WiFi.disconnect(false);
+
+    // 1. If cache is empty, do a clean synchronous STA scan BEFORE launching SoftAP (AgroSense pattern)
+    if (_scannedNetworks.empty()) {
+        WiFi.mode(WIFI_STA);
+        WiFi.disconnect(false);
+        delay(50);
+        scanSync();
+    }
+
+    // 2. Now launch dual AP+STA mode and SoftAP
+    WiFi.mode(WIFI_AP_STA);
     delay(40);
 
-    WiFi.mode(WIFI_AP_STA);
-    WiFi.softAP(DEFAULT_AP_SSID, DEFAULT_AP_PASS);
+    const char* apPass = (strlen(DEFAULT_AP_PASS) >= 8) ? DEFAULT_AP_PASS : nullptr;
+    WiFi.softAP(DEFAULT_AP_SSID, apPass);
+
     _apActive = true;
     _apGracePeriodEnd = 0;
 
@@ -59,25 +137,27 @@ void WifiManager::startApFallback() {
     MDNS.addService("http", "tcp", HTTP_PORT);
 
     SharedData::getInstance().setNetwork(false, -45, WiFi.softAPIP().toString().c_str());
-    Serial.printf("[WiFi] SoftAP started: %s (Password: %s) IP: %s\n", 
-                  DEFAULT_AP_SSID, DEFAULT_AP_PASS, WiFi.softAPIP().toString().c_str());
-
-    // Proactively scan networks so they are immediately cached when user opens setup portal
-    startScan();
+    Serial.printf("[WiFi] SoftAP started: %s (Password: %s) IP: %s | Cached: %u networks\n", 
+                  DEFAULT_AP_SSID, apPass ? apPass : "None (Open Network)", 
+                  WiFi.softAPIP().toString().c_str(), (unsigned)_scannedNetworks.size());
 }
 
 void WifiManager::connect(const String& ssid, const String& pass) {
-    SettingsManager::getInstance().setWifiSsid(ssid);
-    SettingsManager::getInstance().setWifiPass(pass);
-    SettingsManager::getInstance().setOfflineMode(false); // Reset offline mode when connecting
+    _pendingSsid = ssid;
+    _pendingPass = pass;
+    _connectStatus = "connecting";
 
     Serial.printf("[WiFi] User connecting to: %s\n", ssid.c_str());
 
-    // Maintain AP_STA mode so the client device on SoftAP is not abruptly disconnected
+    char toastMsg[32];
+    snprintf(toastMsg, sizeof(toastMsg), "To: %s", ssid.c_str());
+    RenderEngine::getInstance().showToast("CONNECTING WI-FI", toastMsg, COLOR_NEON_CYAN, 5000);
+
+    // Maintain AP_STA mode so the client phone/laptop on SoftAP is not abruptly disconnected
     WiFi.setAutoReconnect(false);
     WiFi.mode(WIFI_AP_STA);
     WiFi.disconnect(false);
-    WiFi.begin(ssid.c_str(), pass.c_str());
+    WiFi.begin(ssid.c_str(), pass.length() > 0 ? pass.c_str() : nullptr);
     _connecting = true;
     _connectStartTime = millis();
 }
@@ -85,6 +165,7 @@ void WifiManager::connect(const String& ssid, const String& pass) {
 void WifiManager::disconnect() {
     WiFi.disconnect(true);
     _connecting = false;
+    _connectStatus = "idle";
     startApFallback();
 }
 
@@ -93,11 +174,13 @@ void WifiManager::forgetWifi() {
     // 1. Erase from NVS flash storage and set offline mode
     SettingsManager::getInstance().setWifiSsid("");
     SettingsManager::getInstance().setWifiPass("");
-    SettingsManager::getInstance().setOfflineMode(true); // Pattern from Smart-Multi-Plug: mark offline
+    SettingsManager::getInstance().setOfflineMode(true);
 
     // 2. Erase from ESP32 WiFi STA stack
     WiFi.disconnect(true, true /* eraseAP = true */);
     _connecting = false;
+    _connectStatus = "idle";
+    _scannedNetworks.clear(); // Clear cache to trigger fresh scan on AP fallback
 
     // 3. Immediately switch to SoftAP setup hotspot
     startApFallback();
@@ -142,131 +225,27 @@ String WifiManager::getSsid() const {
 }
 
 void WifiManager::startScan() {
-    _scanRequested = true;
-}
-
-void WifiManager::performScan() {
     if (_scanning || _connecting) return;
+
+    int16_t status = WiFi.scanComplete();
+    if (status == WIFI_SCAN_RUNNING) {
+        _scanning = true;
+        return;
+    }
+
+    WiFi.scanDelete();
+    WiFi.enableSTA(true);
+
     _scanning = true;
     _scanStartTime = millis();
 
-    Serial.println("[WiFi] Starting native ESP-IDF Wi-Fi scan in taskNetwork...");
+    int16_t res = WiFi.scanNetworks(true /* async */, true /* show_hidden */);
+    Serial.printf("[WiFi] Background scanNetworks started: %d\n", res);
 
-    // 1. Ensure radio is in clean state: no auto-reconnect loops
-    WiFi.setAutoReconnect(false);
-    esp_wifi_disconnect();
-    delay(40);
-
-    // 2. Ensure dual AP+STA mode
-    if (WiFi.getMode() != WIFI_AP_STA) {
-        WiFi.mode(WIFI_AP_STA);
-        delay(40);
+    if (res == WIFI_SCAN_FAILED) {
+        _scanning = false;
+        Serial.println("[WiFi] scanNetworks failed to initiate.");
     }
-
-    // 3. Configure scan with worldwide channels (1-14) while preserving factory TX power
-    wifi_country_t country;
-    if (esp_wifi_get_country(&country) == ESP_OK) {
-        country.schan = 1;
-        country.nchan = 14;
-        country.policy = WIFI_COUNTRY_POLICY_MANUAL;
-        esp_wifi_set_country(&country);
-    }
-
-    wifi_scan_config_t config;
-    memset(&config, 0, sizeof(wifi_scan_config_t));
-    config.scan_type = WIFI_SCAN_TYPE_ACTIVE;
-    config.scan_time.active.min = 100;
-    config.scan_time.active.max = 250;
-    config.home_chan_dwell_time = 30;  // 30ms back on AP channel 1 between channels
-    config.show_hidden = true;
-
-    // 4. Synchronous blocking scan inside taskNetwork (Core 0 priority 1)
-    esp_err_t err = esp_wifi_scan_start(&config, true /* block */);
-    Serial.printf("[WiFi] esp_wifi_scan_start: 0x%x (%s)\n", err, esp_err_to_name(err));
-
-    std::vector<ScannedNetwork> newNetworks;
-
-    if (err == ESP_OK) {
-        uint16_t apCount = 0;
-        esp_wifi_scan_get_ap_num(&apCount);
-        Serial.printf("[WiFi] Driver found %u AP records.\n", apCount);
-
-        if (apCount > 0) {
-            wifi_ap_record_t* apList = (wifi_ap_record_t*)malloc(apCount * sizeof(wifi_ap_record_t));
-            if (apList) {
-                if (esp_wifi_scan_get_ap_records(&apCount, apList) == ESP_OK) {
-                    for (uint16_t i = 0; i < apCount; ++i) {
-                        String s = (const char*)apList[i].ssid;
-                        s.trim();
-                        if (s.length() == 0) continue;
-
-                        bool exists = false;
-                        for (auto& item : newNetworks) {
-                            if (item.ssid == s) {
-                                exists = true;
-                                if (apList[i].rssi > item.rssi) item.rssi = apList[i].rssi;
-                                break;
-                            }
-                        }
-                        if (!exists) {
-                            ScannedNetwork net;
-                            net.ssid = s;
-                            net.rssi = apList[i].rssi;
-                            net.secure = (apList[i].authmode != WIFI_AUTH_OPEN);
-                            net.channel = apList[i].primary;
-                            newNetworks.push_back(net);
-                        }
-                    }
-                }
-                free(apList);
-            }
-        }
-    }
-
-    // 5. Fallback to standard WiFi.scanNetworks if native scan returned empty or transient error
-    if (newNetworks.empty()) {
-        WiFi.scanDelete();
-        int16_t n = WiFi.scanNetworks(false, true);
-        Serial.printf("[WiFi] Fallback WiFi.scanNetworks returned: %d\n", n);
-        if (n > 0) {
-            for (int i = 0; i < n; ++i) {
-                String s = WiFi.SSID(i);
-                s.trim();
-                if (s.length() == 0) continue;
-                bool exists = false;
-                for (auto& item : newNetworks) {
-                    if (item.ssid == s) {
-                        exists = true;
-                        if (WiFi.RSSI(i) > item.rssi) item.rssi = WiFi.RSSI(i);
-                        break;
-                    }
-                }
-                if (!exists) {
-                    ScannedNetwork net;
-                    net.ssid = s;
-                    net.rssi = WiFi.RSSI(i);
-                    net.secure = (WiFi.encryptionType(i) != WIFI_AUTH_OPEN);
-                    net.channel = WiFi.channel(i);
-                    newNetworks.push_back(net);
-                }
-            }
-            WiFi.scanDelete();
-        }
-    }
-
-    if (!newNetworks.empty()) {
-        std::sort(newNetworks.begin(), newNetworks.end(), [](const ScannedNetwork& a, const ScannedNetwork& b) {
-            return a.rssi > b.rssi;
-        });
-        _scannedNetworks = std::move(newNetworks);
-        Serial.printf("[WiFi] Cached %d unique networks.\n", (int)_scannedNetworks.size());
-    } else {
-        Serial.println("[WiFi] No networks found in current scan pass (retaining previous cache if any).");
-    }
-
-    _scanning = false;
-    _scanRequested = false;
-    _lastScanTime = millis();
 }
 
 String WifiManager::getScannedNetworksJson() {
@@ -286,50 +265,161 @@ String WifiManager::getScannedNetworksJson() {
     return out;
 }
 
-void WifiManager::update() {
-    // Process captive portal DNS queries
-    if (_apActive) {
-        _dnsServer.processNextRequest();
-    }
+String WifiManager::buildNetworkSelectHtml() {
+    String select = "<select id=\"wifi-select\" name=\"ssid_select\">\n";
+    select += "<option value=\"\" disabled selected>-- Select an available Wi-Fi network --</option>\n";
 
-    // Process background Wi-Fi scan trigger (in SoftAP setup mode)
+    if (_scannedNetworks.empty()) {
+        select += "<option value=\"\" disabled>No networks found (click Rescan)</option>\n";
+    } else {
+        for (const auto& net : _scannedNetworks) {
+            String lockStr = net.secure ? " [🔒]" : " [Open]";
+            String bar;
+            if      (net.rssi >= -55) bar = "▂▄▆█";
+            else if (net.rssi >= -65) bar = "▂▄▆ ";
+            else if (net.rssi >= -75) bar = "▂▄  ";
+            else                      bar = "▂   ";
+
+            String cleanSsid = net.ssid;
+            cleanSsid.replace("&", "&amp;");
+            cleanSsid.replace("\"", "&quot;");
+            cleanSsid.replace("<", "&lt;");
+            cleanSsid.replace(">", "&gt;");
+
+            select += "<option value=\"" + cleanSsid + "\" data-secure=\"" + (net.secure ? "true" : "false") + "\">";
+            select += bar + " " + cleanSsid + lockStr + " (" + String(net.rssi) + " dBm)";
+            select += "</option>\n";
+        }
+    }
+    select += "<option value=\"__custom__\">+ Enter network manually (Hidden SSID)...</option>\n";
+    select += "</select>\n";
+    return select;
+}
+
+String WifiManager::buildNetworkCardsHtml() {
+    if (_scannedNetworks.empty()) {
+        return "<div class=\"empty-state\">No networks discovered yet.<br>Click <strong>Rescan</strong> or enter SSID manually below.</div>";
+    }
+    String html = "";
+    for (const auto& net : _scannedNetworks) {
+        String lockSvg = net.secure ? 
+            "<svg width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"2.2\"><rect x=\"3\" y=\"11\" width=\"18\" height=\"11\" rx=\"2\" ry=\"2\"></rect><path d=\"M7 11V7a5 5 0 0 1 10 0v4\"></path></svg>" : 
+            "<span class=\"badge-open\">OPEN</span>";
+
+        int bars = net.rssi > -60 ? 4 : (net.rssi > -70 ? 3 : (net.rssi > -80 ? 2 : 1));
+        String barColor = net.rssi > -65 ? "var(--mint)" : (net.rssi > -78 ? "var(--cyan)" : "var(--amber)");
+        String sigSvg = "<svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"" + barColor + "\">";
+        sigSvg += "<rect x=\"2\" y=\"16\" width=\"3\" height=\"6\" rx=\"1\" opacity=\"" + String(bars >= 1 ? "1" : "0.25") + "\"/>";
+        sigSvg += "<rect x=\"7\" y=\"12\" width=\"3\" height=\"10\" rx=\"1\" opacity=\"" + String(bars >= 2 ? "1" : "0.25") + "\"/>";
+        sigSvg += "<rect x=\"12\" y=\"8\" width=\"3\" height=\"14\" rx=\"1\" opacity=\"" + String(bars >= 3 ? "1" : "0.25") + "\"/>";
+        sigSvg += "<rect x=\"17\" y=\"4\" width=\"3\" height=\"18\" rx=\"1\" opacity=\"" + String(bars >= 4 ? "1" : "0.25") + "\"/>";
+        sigSvg += "</svg>";
+
+        String escapedSsid = net.ssid;
+        escapedSsid.replace("\\", "\\\\");
+        escapedSsid.replace("'", "\\'");
+        escapedSsid.replace("\"", "&quot;");
+
+        String displaySsid = net.ssid;
+        displaySsid.replace("&", "&amp;");
+        displaySsid.replace("<", "&lt;");
+        displaySsid.replace(">", "&gt;");
+
+        html += "<div class=\"net-item\" data-ssid=\"" + escapedSsid + "\" onclick=\"selectNetwork('" + escapedSsid + "', " + (net.secure ? "true" : "false") + ")\">";
+        html += "<div class=\"net-name\">" + lockSvg + "<span>" + displaySsid + "</span></div>";
+        html += "<div class=\"net-meta\"><span class=\"net-rssi\">" + String(net.rssi) + " dBm</span>" + sigSvg + "</div>";
+        html += "</div>";
+    }
+    return html;
+}
+
+void WifiManager::update() {
+    // 1. Drain Captive Portal DNS queries (process up to 5 per tick to handle bursts)
     if (_apActive) {
-        uint32_t now = millis();
-        bool shouldScan = _scanRequested || (_scannedNetworks.empty() && (now - _lastScanTime > 3000)) || (now - _lastScanTime > 60000);
-        if (shouldScan && !_scanning && !_connecting) {
-            _scanRequested = false;
-            performScan();
+        for (int i = 0; i < 5; ++i) {
+            _dnsServer.processNextRequest();
         }
     }
 
     uint32_t now = millis();
-    if (now - _lastCheckTime < 1000) return;
+
+    // 2. Check asynchronous non-blocking scan completion
+    if (_scanning) {
+        int16_t status = WiFi.scanComplete();
+        if (status >= 0) {
+            _scanning = false;
+            _lastScanTime = now;
+            if (status > 0) {
+                populateScannedNetworks(status);
+            } else {
+                Serial.println("[WiFi] Background scan pass returned 0 results; retaining existing cache.");
+            }
+            WiFi.scanDelete();
+        } else if (status == WIFI_SCAN_FAILED) {
+            _scanning = false;
+            _lastScanTime = now;
+            WiFi.scanDelete();
+            Serial.println("[WiFi] Asynchronous scan failed.");
+        } else if (now - _scanStartTime > 8000) {
+            _scanning = false;
+            _lastScanTime = now;
+            WiFi.scanDelete();
+            Serial.println("[WiFi] Scan timed out after 8s.");
+        }
+    }
+
+    // 3. Rate-limit station connection state machine checks to every 200ms
+    if (now - _lastCheckTime < 200) return;
     _lastCheckTime = now;
 
     if (_connecting) {
-        if (WiFi.status() == WL_CONNECTED) {
+        wl_status_t status = WiFi.status();
+        if (status == WL_CONNECTED) {
             _connecting = false;
-            // Connected! Set grace period for SoftAP (30 seconds) so user gets feedback on phone
+            _connectStatus = "connected";
+
+            // Save confirmed working credentials into NVS storage
+            SettingsManager::getInstance().setWifiSsid(_pendingSsid);
+            SettingsManager::getInstance().setWifiPass(_pendingPass);
+            SettingsManager::getInstance().setOfflineMode(false);
+
+            // Keep SoftAP alive for 30s so user's phone browser receives the success response
             _apGracePeriodEnd = now + 30000;
 
             MDNS.begin(MDNS_HOSTNAME);
             MDNS.addService("http", "tcp", HTTP_PORT);
             SharedData::getInstance().setNetwork(true, WiFi.RSSI(), WiFi.localIP().toString().c_str());
             EventBus::getInstance().publish(EVENT_WIFI_CONNECTED, nullptr);
+
+            char toastMsg[32];
+            snprintf(toastMsg, sizeof(toastMsg), "IP: %s", WiFi.localIP().toString().c_str());
+            RenderEngine::getInstance().showToast("WI-FI CONNECTED", toastMsg, COLOR_NEON_MINT, 4000);
             Serial.printf("[WiFi] Connected! IP: %s RSSI: %d dBm\n", WiFi.localIP().toString().c_str(), (int)WiFi.RSSI());
-        } else if (now - _connectStartTime > 8000) { // 8s connection timeout (matches Smart-Multi-Plug)
+        } else if (status == WL_CONNECT_FAILED) {
             _connecting = false;
-            WiFi.setAutoReconnect(false);
-            WiFi.disconnect(false); // Abort pending association attempts so radio is fully idle
-            Serial.println("[WiFi] Connection timed out after 8s. Switched station radio to idle.");
-            // Ensure AP is active so user can re-try
-            if (!_apActive) {
-                startApFallback();
-            }
+            _connectStatus = "failed";
+            WiFi.disconnect(false);
+            RenderEngine::getInstance().showToast("AUTH FAILED", "Wrong password", COLOR_NEON_RED, 4000);
+            Serial.println("[WiFi] Connection failed: incorrect Wi-Fi password.");
+            if (!_apActive) startApFallback();
+        } else if (status == WL_NO_SSID_AVAIL) {
+            _connecting = false;
+            _connectStatus = "not_found";
+            WiFi.disconnect(false);
+            RenderEngine::getInstance().showToast("NOT FOUND", "SSID out of range", COLOR_NEON_RED, 4000);
+            Serial.println("[WiFi] Connection failed: SSID not found.");
+            if (!_apActive) startApFallback();
+        } else if (now - _connectStartTime > 15000) { // 15 second connection timeout
+            _connecting = false;
+            _connectStatus = "timeout";
+            WiFi.disconnect(false);
+            RenderEngine::getInstance().showToast("TIMED OUT", "Could not connect", COLOR_NEON_RED, 4000);
+            Serial.println("[WiFi] Connection timed out after 15s.");
+            if (!_apActive) startApFallback();
         }
     } else if (WiFi.status() == WL_CONNECTED) {
         SharedData::getInstance().setNetwork(true, WiFi.RSSI(), WiFi.localIP().toString().c_str());
-        // Once connected, shut down AP after grace period to conserve radio & power
+        // Once connected, shut down SoftAP after grace period to free radio bandwidth and power
         if (_apActive && _apGracePeriodEnd > 0 && now > _apGracePeriodEnd) {
             _dnsServer.stop();
             WiFi.softAPdisconnect(true);
@@ -339,7 +429,7 @@ void WifiManager::update() {
             Serial.println("[WiFi] SoftAP grace period expired. Switched to Station-only mode.");
         }
     } else {
-        // If not connected and not connecting, ensure AP is available for recovery
+        // If not connected and not connecting, ensure SoftAP is available for recovery
         if (!_apActive && !_connecting) {
             startApFallback();
         }
