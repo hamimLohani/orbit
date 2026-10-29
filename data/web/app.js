@@ -3880,7 +3880,7 @@ create policy "Allow all delete" on public.recordings for delete using (true);
     const wifiList = document.getElementById('dash-wifi-list');
     const ssidInput = document.getElementById('dash-wifi-ssid');
     const passInput = document.getElementById('dash-wifi-pass');
-    const form = document.getElementById('dashboard-wifi-form');
+    const form = document.getElementById('dash-wifi-form') || document.getElementById('dashboard-wifi-form');
     const btnConnect = document.getElementById('btn-dash-connect');
     const statusBox = document.getElementById('dash-wifi-status');
     const statusText = document.getElementById('dash-status-text');
@@ -3929,11 +3929,13 @@ create policy "Allow all delete" on public.recordings for delete using (true);
             data.networks.forEach(net => {
               const item = document.createElement('div');
               item.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.06); cursor:pointer; transition:background 0.15s;';
+              const cleanSsid = (net.ssid || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
               item.innerHTML = `
-                <div style="font-weight:600; font-size:0.9rem; color:#fff;">
-                  ${net.secure ? '🔒' : '🔓'} ${net.ssid}
+                <div style="font-weight:600; font-size:0.9rem; color:#fff; display:flex; align-items:center; gap:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0;">
+                  <span>${net.secure ? '🔒' : '🔓'}</span>
+                  <span style="overflow:hidden; text-overflow:ellipsis;">${cleanSsid}</span>
                 </div>
-                <div style="font-size:0.75rem; color:var(--muted); font-family:monospace;">
+                <div style="font-size:0.75rem; color:var(--muted); font-family:monospace; margin-left:12px; flex-shrink:0;">
                   ${net.rssi} dBm
                 </div>
               `;

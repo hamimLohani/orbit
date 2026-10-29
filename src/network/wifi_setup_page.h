@@ -40,8 +40,8 @@ const char WIFI_SETUP_HTML[] PROGMEM = R"rawliteral(
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 16px;
+      justify-content: flex-start;
+      padding: 24px 16px 48px;
       position: relative;
       overflow-x: hidden;
     }
@@ -56,6 +56,7 @@ const char WIFI_SETUP_HTML[] PROGMEM = R"rawliteral(
     .glow-purple { width: 300px; height: 300px; background: rgba(184, 31, 223, 0.12); bottom: -60px; right: -60px; }
 
     .portal-box {
+      margin: auto 0;
       width: 100%;
       max-width: 440px;
       background: var(--card);
@@ -202,12 +203,20 @@ const char WIFI_SETUP_HTML[] PROGMEM = R"rawliteral(
       display: flex;
       align-items: center;
       gap: 8px;
-      word-break: break-all;
+      flex: 1;
+      min-width: 0;
+    }
+    .net-name span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .net-meta {
       display: flex;
       align-items: center;
       gap: 8px;
+      flex-shrink: 0;
+      margin-left: 10px;
     }
     .net-rssi {
       font-size: 0.75rem;
@@ -219,6 +228,15 @@ const char WIFI_SETUP_HTML[] PROGMEM = R"rawliteral(
       text-align: center;
       color: var(--muted);
       font-size: 0.85rem;
+    }
+    .spinner {
+      margin: 0 auto;
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--border);
+      border-top-color: var(--cyan);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
     }
 
     /* Form Fields */
@@ -256,7 +274,7 @@ const char WIFI_SETUP_HTML[] PROGMEM = R"rawliteral(
       border-color: var(--cyan);
       box-shadow: 0 0 10px rgba(0, 255, 255, 0.25);
     }
-    .input-wrap input { padding-right: 42px; }
+    #pass { padding-right: 44px; }
     .btn-toggle-pw {
       position: absolute;
       right: 10px;
@@ -398,7 +416,10 @@ const char WIFI_SETUP_HTML[] PROGMEM = R"rawliteral(
     </div>
 
     <div class="network-list" id="network-list">
-      %NETWORKS_LIST%
+      <div class="empty-state">
+        <div class="spinner"></div>
+        <div style="margin-top: 10px;">Scanning for nearby networks...</div>
+      </div>
     </div>
 
     <!-- Connection Form -->
@@ -504,9 +525,9 @@ const char WIFI_SETUP_HTML[] PROGMEM = R"rawliteral(
         }
 
         // If no networks returned yet, auto-retry a few times (device scan may be completing)
-        if ((!data.networks || data.networks.length === 0) && autoRetryCount < 4) {
+        if ((!data.networks || data.networks.length === 0) && autoRetryCount < 8) {
           autoRetryCount++;
-          setTimeout(fetchNetworks, 1200);
+          setTimeout(fetchNetworks, 1000);
           return;
         }
 
@@ -615,11 +636,11 @@ const char WIFI_SETUP_HTML[] PROGMEM = R"rawliteral(
               statusTitle.innerHTML = '&#x2705; Connected Successfully!';
               statusDetail.innerHTML = `
                 ORBIT is now connected to <strong>${escapeHtml(stat.ssid || ssid)}</strong>.<br>
-                Assigned Local IP: <strong>${stat.ip}</strong><br><br>
-                You can now connect your device to your home Wi-Fi and open:<br>
-                <a class="btn-dashboard-link" href="http://${stat.ip}">Open ORBIT Dashboard (${stat.ip})</a>
-                &nbsp;or&nbsp;
-                <a class="btn-dashboard-link" href="http://orbit.local">http://orbit.local</a>
+                Assigned Local IP: <strong>${stat.ip}</strong><br>
+                <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
+                  <a class="btn-dashboard-link" href="http://${stat.ip}">Open ORBIT Dashboard (${stat.ip}) &rarr;</a>
+                  <a class="btn-dashboard-link" style="background:rgba(0,255,255,0.15); color:var(--cyan); border:1px solid rgba(0,255,255,0.3); box-shadow:none;" href="http://orbit.local">Open via http://orbit.local &rarr;</a>
+                </div>
               `;
               btnSubmit.disabled = false;
               return;

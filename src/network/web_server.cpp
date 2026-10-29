@@ -137,7 +137,7 @@ void WebServer::init() {
 void WebServer::setupRoutes() {
     // 1. Wi-Fi Provisioning & Captive Portal Setup Page
     _server.on("/wifi", HTTP_GET, [](AsyncWebServerRequest* request) {
-        request->send_P(200, "text/html", WIFI_SETUP_HTML, processWifiSetupHtml);
+        request->send_P(200, "text/html", WIFI_SETUP_HTML);
     });
     _server.on("/setup", HTTP_GET, [](AsyncWebServerRequest* request) {
         request->redirect("/wifi");

@@ -163,21 +163,20 @@ void WifiManager::performScan() {
         delay(40);
     }
 
-    // 3. Configure scan with worldwide channels (1-14) and home channel dwell time so SoftAP clients do NOT drop
-    wifi_country_t country = {
-        .cc = "01",
-        .schan = 1,
-        .nchan = 14,
-        .max_tx_power = 20,
-        .policy = WIFI_COUNTRY_POLICY_MANUAL
-    };
-    esp_wifi_set_country(&country);
+    // 3. Configure scan with worldwide channels (1-14) while preserving factory TX power
+    wifi_country_t country;
+    if (esp_wifi_get_country(&country) == ESP_OK) {
+        country.schan = 1;
+        country.nchan = 14;
+        country.policy = WIFI_COUNTRY_POLICY_MANUAL;
+        esp_wifi_set_country(&country);
+    }
 
     wifi_scan_config_t config;
     memset(&config, 0, sizeof(wifi_scan_config_t));
     config.scan_type = WIFI_SCAN_TYPE_ACTIVE;
-    config.scan_time.active.min = 20;
-    config.scan_time.active.max = 120; // 120ms per channel
+    config.scan_time.active.min = 100;
+    config.scan_time.active.max = 250;
     config.home_chan_dwell_time = 30;  // 30ms back on AP channel 1 between channels
     config.show_hidden = true;
 
@@ -226,7 +225,8 @@ void WifiManager::performScan() {
 
     // 5. Fallback to standard WiFi.scanNetworks if native scan returned empty or transient error
     if (newNetworks.empty()) {
-        int16_t n = WiFi.scanNetworks(false, false);
+        WiFi.scanDelete();
+        int16_t n = WiFi.scanNetworks(false, true);
         Serial.printf("[WiFi] Fallback WiFi.scanNetworks returned: %d\n", n);
         if (n > 0) {
             for (int i = 0; i < n; ++i) {
