@@ -87,6 +87,11 @@ WebServer::WebServer() : _server(HTTP_PORT) {}
 void WebServer::init() {
     _fsMounted = LittleFS.begin(false); // Do not block with auto-formatting on boot
 
+    // Enable CORS headers for mobile Captive Portal webviews & cross-origin polling
+    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
+    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "*");
+
     // Attach WebSocket
     WebSocketServer::getInstance().init(_server);
 
@@ -232,6 +237,10 @@ void WebServer::setupRoutes() {
 
     // 5. Captive Portal Catch-All Fallback (redirect unknown requests in AP mode)
     _server.onNotFound([](AsyncWebServerRequest* request) {
+        if (request->method() == HTTP_OPTIONS) {
+            request->send(200);
+            return;
+        }
         if (WifiManager::getInstance().isApActive() && !WifiManager::getInstance().isConnected()) {
             request->redirect("http://" + WiFi.softAPIP().toString() + "/wifi");
         } else {
@@ -241,39 +250,6 @@ void WebServer::setupRoutes() {
 }
 
 void WebServer::setupRestApi() {
-    // 0. API Root Catalog & Documentation (GET /api)
-    _server.on("/api", HTTP_GET, [](AsyncWebServerRequest* request) {
-        JsonDocument doc;
-        doc["name"] = "ORBIT v2 Ambient Companion OS";
-        doc["version"] = ORBIT_VERSION_STR;
-        JsonObject endpoints = doc["endpoints"].to<JsonObject>();
-        endpoints["telemetry"]    = "GET /api/telemetry";
-        endpoints["apps"]         = "GET /api/apps";
-        endpoints["recordings"]   = "GET /api/recordings";
-        endpoints["download"]     = "GET /api/download?file=<name>";
-        endpoints["delete_memo"]  = "POST /api/recordings/delete?file=<name>";
-        endpoints["wifi_scan"]    = "GET /api/wifi/scan";
-        endpoints["wifi_status"]  = "GET /api/wifi/status";
-        endpoints["wifi_connect"] = "POST /api/wifi/connect";
-        endpoints["wifi_forget"]  = "POST /api/wifi/forget";
-        endpoints["system_info"]  = "GET /api/system/info";
-        endpoints["system_reboot"]= "POST /api/system/reboot";
-        endpoints["files_upload"] = "POST /api/files/upload?target=[sd|lfs]&path=<path>";
-        endpoints["ota_status"]   = "GET /api/ota/status";
-        endpoints["ota_update"]      = "POST /update";
-        endpoints["ai_answer"]       = "POST /api/ai/answer";
-        endpoints["ai_clear"]        = "POST /api/ai/clear";
-        endpoints["keys"]            = "GET /api/keys";
-        endpoints["supabase_config"] = "GET /api/supabase/config";
-        endpoints["supabase_sync"]   = "POST /api/supabase/sync?file=<name>";
-        endpoints["firebase_config"] = "GET /api/firebase/config";
-        endpoints["firebase_sync"]   = "POST /api/firebase/sync?file=<name>";
-
-        String res;
-        serializeJson(doc, res);
-        request->send(200, "application/json", res);
-    });
-
     // 0b. Cloud Keys & Service Provisioning API (GET /api/keys)
     _server.on("/api/keys", HTTP_GET, [](AsyncWebServerRequest* request) {
         JsonDocument doc;
@@ -584,7 +560,10 @@ void WebServer::setupRestApi() {
 
         String res;
         serializeJson(doc, res);
-        request->send(200, "application/json", res);
+        AsyncWebServerResponse* response = request->beginResponse(200, "application/json", res);
+        response->addHeader("Access-Control-Allow-Origin", "*");
+        response->addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        request->send(response);
     });
 
     // 8. Connect to Wi-Fi (POST /api/wifi/connect with form data or URL params)
@@ -616,10 +595,13 @@ void WebServer::setupRestApi() {
         JsonDocument res;
         res["status"] = "connecting";
         res["ssid"] = ssid;
-        res["message"] = "Initiating connection to " + ssid;
+        res["message"] = "Credentials saved! Initiating connection to " + ssid;
         String out;
         serializeJson(res, out);
-        request->send(200, "application/json", out);
+        AsyncWebServerResponse* response = request->beginResponse(200, "application/json", out);
+        response->addHeader("Access-Control-Allow-Origin", "*");
+        response->addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        request->send(response);
     });
 
     // 9. Connect to Wi-Fi fallback (GET /api/wifi/connect?ssid=...&pass=...)
@@ -637,10 +619,13 @@ void WebServer::setupRestApi() {
         JsonDocument res;
         res["status"] = "connecting";
         res["ssid"] = ssid;
-        res["message"] = "Initiating connection to " + ssid;
+        res["message"] = "Credentials saved! Initiating connection to " + ssid;
         String out;
         serializeJson(res, out);
-        request->send(200, "application/json", out);
+        AsyncWebServerResponse* response = request->beginResponse(200, "application/json", out);
+        response->addHeader("Access-Control-Allow-Origin", "*");
+        response->addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        request->send(response);
     });
 
     // 9b. Forget Saved Wi-Fi Credentials API (POST /api/wifi/forget & GET /api/wifi/forget)
@@ -833,5 +818,43 @@ void WebServer::setupRestApi() {
     _server.on("/api/ai/clear", HTTP_POST, [](AsyncWebServerRequest* request) {
         RenderEngine::getInstance().hideAiAnswer();
         request->send(200, "application/json", "{\"status\":\"success\",\"message\":\"AI answer dismissed\"}");
+    });
+
+    // 16. API Root Catalog & Documentation (GET /api and /api/)
+    // Placed at the very end so it never shadows specific child endpoints like /api/wifi/status
+    _server.on("/api", HTTP_GET, [](AsyncWebServerRequest* request) {
+        if (request->url() != "/api" && request->url() != "/api/") {
+            request->send(404, "text/plain", "Not Found");
+            return;
+        }
+        JsonDocument doc;
+        doc["name"] = "ORBIT v2 Ambient Companion OS";
+        doc["version"] = ORBIT_VERSION_STR;
+        JsonObject endpoints = doc["endpoints"].to<JsonObject>();
+        endpoints["telemetry"]    = "GET /api/telemetry";
+        endpoints["apps"]         = "GET /api/apps";
+        endpoints["recordings"]   = "GET /api/recordings";
+        endpoints["download"]     = "GET /api/download?file=<name>";
+        endpoints["delete_memo"]  = "POST /api/recordings/delete?file=<name>";
+        endpoints["wifi_scan"]    = "GET /api/wifi/scan";
+        endpoints["wifi_status"]  = "GET /api/wifi/status";
+        endpoints["wifi_connect"] = "POST /api/wifi/connect";
+        endpoints["wifi_forget"]  = "POST /api/wifi/forget";
+        endpoints["system_info"]  = "GET /api/system/info";
+        endpoints["system_reboot"]= "POST /api/system/reboot";
+        endpoints["files_upload"] = "POST /api/files/upload?target=[sd|lfs]&path=<path>";
+        endpoints["ota_status"]   = "GET /api/ota/status";
+        endpoints["ota_update"]      = "POST /update";
+        endpoints["ai_answer"]       = "POST /api/ai/answer";
+        endpoints["ai_clear"]        = "POST /api/ai/clear";
+        endpoints["keys"]            = "GET /api/keys";
+        endpoints["supabase_config"] = "GET /api/supabase/config";
+        endpoints["supabase_sync"]   = "POST /api/supabase/sync?file=<name>";
+        endpoints["firebase_config"] = "GET /api/firebase/config";
+        endpoints["firebase_sync"]   = "POST /api/firebase/sync?file=<name>";
+
+        String res;
+        serializeJson(doc, res);
+        request->send(200, "application/json", res);
     });
 }

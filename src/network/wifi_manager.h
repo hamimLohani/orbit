@@ -63,9 +63,14 @@ private:
     DNSServer _dnsServer;
     bool _apActive = false;
     bool _connecting = false;
+    bool _pendingConnect = false;
+    uint32_t _pendingConnectTime = 0;
     bool _scanning = false;
     bool _scanRequested = false;
     String _connectStatus = "idle"; // "idle", "connecting", "connected", "failed", "timeout", "not_found"
+    uint8_t _authFailCount = 0;
+    uint8_t _noApCount = 0;
+    uint8_t _pendingChannel = 0;
     String _pendingSsid = "";
     String _pendingPass = "";
     uint32_t _scanStartTime = 0;

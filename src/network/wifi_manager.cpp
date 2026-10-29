@@ -8,6 +8,64 @@
 #include <algorithm>
 
 void WifiManager::init() {
+    // Monitor detailed STA connection events
+    WiFi.onEvent([this](WiFiEvent_t event, WiFiEventInfo_t info) {
+        if (event == ARDUINO_EVENT_WIFI_STA_GOT_IP) {
+            _connecting = false;
+            _connectStatus = "connected";
+            _authFailCount = 0;
+            _noApCount = 0;
+
+            // Save confirmed working credentials into NVS storage
+            SettingsManager::getInstance().setWifiSsid(_pendingSsid);
+            SettingsManager::getInstance().setWifiPass(_pendingPass);
+            SettingsManager::getInstance().setOfflineMode(false);
+
+            // Keep SoftAP alive for 60s so user's phone browser receives the success response
+            _apGracePeriodEnd = millis() + 60000;
+
+            MDNS.begin(MDNS_HOSTNAME);
+            MDNS.addService("http", "tcp", HTTP_PORT);
+            SharedData::getInstance().setNetwork(true, WiFi.RSSI(), WiFi.localIP().toString().c_str());
+            EventBus::getInstance().publish(EVENT_WIFI_CONNECTED, nullptr);
+
+            char toastMsg[32];
+            snprintf(toastMsg, sizeof(toastMsg), "IP: %s", WiFi.localIP().toString().c_str());
+            RenderEngine::getInstance().showToast("WI-FI CONNECTED", toastMsg, COLOR_NEON_MINT, 5000);
+            Serial.printf("[WiFi] STA Got IP: %s\n", WiFi.localIP().toString().c_str());
+        } else if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) {
+            uint8_t reason = info.wifi_sta_disconnected.reason;
+            Serial.printf("[WiFi] STA Disconnected (reason %u: %s)\n", 
+                          reason, WiFi.STA.disconnectReasonName((wifi_err_reason_t)reason));
+            if (_connecting) {
+                if (reason == WIFI_REASON_AUTH_FAIL || 
+                    reason == WIFI_REASON_4WAY_HANDSHAKE_TIMEOUT || 
+                    reason == WIFI_REASON_HANDSHAKE_TIMEOUT ||
+                    reason == WIFI_REASON_MIC_FAILURE) {
+                    _authFailCount++;
+                    if (_authFailCount >= 2) {
+                        _connecting = false;
+                        _connectStatus = "failed";
+                        WiFi.disconnect(false);
+                        RenderEngine::getInstance().showToast("AUTH FAILED", "Wrong password", COLOR_NEON_RED, 4000);
+                        Serial.println("[WiFi] Authentication failed: incorrect password.");
+                        if (!_apActive) startApFallback();
+                    }
+                } else if (reason == WIFI_REASON_NO_AP_FOUND) {
+                    _noApCount++;
+                    if (_noApCount >= 2) {
+                        _connecting = false;
+                        _connectStatus = "not_found";
+                        WiFi.disconnect(false);
+                        RenderEngine::getInstance().showToast("NOT FOUND", "SSID out of range", COLOR_NEON_RED, 4000);
+                        Serial.println("[WiFi] Network not found.");
+                        if (!_apActive) startApFallback();
+                    }
+                }
+            }
+        }
+    });
+
     startStation();
 }
 
@@ -146,20 +204,32 @@ void WifiManager::connect(const String& ssid, const String& pass) {
     _pendingSsid = ssid;
     _pendingPass = pass;
     _connectStatus = "connecting";
+    _authFailCount = 0;
+    _noApCount = 0;
 
-    Serial.printf("[WiFi] User connecting to: %s\n", ssid.c_str());
+    // Detect if we know the channel of the network
+    _pendingChannel = 0;
+    for (const auto& net : _scannedNetworks) {
+        if (net.ssid == ssid && net.channel > 0) {
+            _pendingChannel = net.channel;
+            break;
+        }
+    }
+
+    // Immediately persist credentials so they are safely preserved
+    SettingsManager::getInstance().setWifiSsid(_pendingSsid);
+    SettingsManager::getInstance().setWifiPass(_pendingPass);
+    SettingsManager::getInstance().setOfflineMode(false);
+
+    Serial.printf("[WiFi] Queued connection to: %s (Channel: %u)\n", ssid.c_str(), _pendingChannel);
 
     char toastMsg[32];
     snprintf(toastMsg, sizeof(toastMsg), "To: %s", ssid.c_str());
     RenderEngine::getInstance().showToast("CONNECTING WI-FI", toastMsg, COLOR_NEON_CYAN, 5000);
 
-    // Maintain AP_STA mode so the client phone/laptop on SoftAP is not abruptly disconnected
-    WiFi.setAutoReconnect(false);
-    WiFi.mode(WIFI_AP_STA);
-    WiFi.disconnect(false);
-    WiFi.begin(ssid.c_str(), pass.length() > 0 ? pass.c_str() : nullptr);
-    _connecting = true;
-    _connectStartTime = millis();
+    // Schedule radio transition after 350ms so AsyncWebServer finishes flushing HTTP 200 to client
+    _pendingConnect = true;
+    _pendingConnectTime = millis() + 350;
 }
 
 void WifiManager::disconnect() {
@@ -334,6 +404,8 @@ String WifiManager::buildNetworkCardsHtml() {
 }
 
 void WifiManager::update() {
+    uint32_t now = millis();
+
     // 1. Drain Captive Portal DNS queries (process up to 5 per tick to handle bursts)
     if (_apActive) {
         for (int i = 0; i < 5; ++i) {
@@ -341,7 +413,21 @@ void WifiManager::update() {
         }
     }
 
-    uint32_t now = millis();
+    // 1b. Handle scheduled Wi-Fi radio connection after HTTP 200 flush
+    if (_pendingConnect && now >= _pendingConnectTime) {
+        _pendingConnect = false;
+        WiFi.setAutoReconnect(false);
+        WiFi.mode(WIFI_AP_STA);
+        WiFi.disconnect(false);
+        if (_pendingChannel > 0) {
+            WiFi.begin(_pendingSsid.c_str(), _pendingPass.length() > 0 ? _pendingPass.c_str() : nullptr, _pendingChannel);
+        } else {
+            WiFi.begin(_pendingSsid.c_str(), _pendingPass.length() > 0 ? _pendingPass.c_str() : nullptr);
+        }
+        _connecting = true;
+        _connectStartTime = now;
+        Serial.printf("[WiFi] Initiated WiFi.begin for: %s (ch=%u)\n", _pendingSsid.c_str(), _pendingChannel);
+    }
 
     // 2. Check asynchronous non-blocking scan completion
     if (_scanning) {
@@ -383,8 +469,8 @@ void WifiManager::update() {
             SettingsManager::getInstance().setWifiPass(_pendingPass);
             SettingsManager::getInstance().setOfflineMode(false);
 
-            // Keep SoftAP alive for 30s so user's phone browser receives the success response
-            _apGracePeriodEnd = now + 30000;
+            // Keep SoftAP alive for 60s so user's phone browser receives the success response
+            _apGracePeriodEnd = now + 60000;
 
             MDNS.begin(MDNS_HOSTNAME);
             MDNS.addService("http", "tcp", HTTP_PORT);
@@ -393,28 +479,14 @@ void WifiManager::update() {
 
             char toastMsg[32];
             snprintf(toastMsg, sizeof(toastMsg), "IP: %s", WiFi.localIP().toString().c_str());
-            RenderEngine::getInstance().showToast("WI-FI CONNECTED", toastMsg, COLOR_NEON_MINT, 4000);
+            RenderEngine::getInstance().showToast("WI-FI CONNECTED", toastMsg, COLOR_NEON_MINT, 5000);
             Serial.printf("[WiFi] Connected! IP: %s RSSI: %d dBm\n", WiFi.localIP().toString().c_str(), (int)WiFi.RSSI());
-        } else if (status == WL_CONNECT_FAILED) {
-            _connecting = false;
-            _connectStatus = "failed";
-            WiFi.disconnect(false);
-            RenderEngine::getInstance().showToast("AUTH FAILED", "Wrong password", COLOR_NEON_RED, 4000);
-            Serial.println("[WiFi] Connection failed: incorrect Wi-Fi password.");
-            if (!_apActive) startApFallback();
-        } else if (status == WL_NO_SSID_AVAIL) {
-            _connecting = false;
-            _connectStatus = "not_found";
-            WiFi.disconnect(false);
-            RenderEngine::getInstance().showToast("NOT FOUND", "SSID out of range", COLOR_NEON_RED, 4000);
-            Serial.println("[WiFi] Connection failed: SSID not found.");
-            if (!_apActive) startApFallback();
-        } else if (now - _connectStartTime > 15000) { // 15 second connection timeout
+        } else if (now - _connectStartTime > 18000) { // 18 second connection timeout
             _connecting = false;
             _connectStatus = "timeout";
             WiFi.disconnect(false);
             RenderEngine::getInstance().showToast("TIMED OUT", "Could not connect", COLOR_NEON_RED, 4000);
-            Serial.println("[WiFi] Connection timed out after 15s.");
+            Serial.println("[WiFi] Connection timed out after 18s.");
             if (!_apActive) startApFallback();
         }
     } else if (WiFi.status() == WL_CONNECTED) {
@@ -430,7 +502,7 @@ void WifiManager::update() {
         }
     } else {
         // If not connected and not connecting, ensure SoftAP is available for recovery
-        if (!_apActive && !_connecting) {
+        if (!_apActive && !_connecting && !_pendingConnect) {
             startApFallback();
         }
     }

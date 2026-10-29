@@ -829,68 +829,91 @@ const char WIFI_SETUP_HTML[] PROGMEM = R"rawliteral(
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: formData
         });
+      } catch (err) {
+        // Even if fetch threw an error (e.g. TCP reset due to radio channel switch),
+        // the ESP32 received the request. We continue to polling.
+      }
 
-        // Poll connection status
-        let attempts = 0;
-        const maxAttempts = 22; // 22 x 800ms ~ 17 seconds
-        const pollInterval = setInterval(async () => {
-          attempts++;
-          try {
-            const statRes = await fetch('/api/wifi/status');
-            const stat = await statRes.json();
+      // Poll connection status
+      let attempts = 0;
+      const maxAttempts = 26; // 26 x 800ms ~ 20.8 seconds
 
-            if (stat.connected || stat.connect_status === 'connected') {
-              clearInterval(pollInterval);
-              statusSpinner.style.display = 'none';
-              statusHeader.style.color = 'var(--mint)';
-              statusTitle.innerHTML = '&#x2705; Connected Successfully!';
-              statusDetail.innerHTML = `
-                ORBIT is now connected to <strong>${escapeHtml(stat.ssid || ssid)}</strong>.<br>
-                Assigned Local IP: <strong>${stat.ip}</strong><br>
-                <div class="btn-action-group">
-                  <a class="btn-dashboard-link" href="http://${stat.ip}">Open ORBIT Dashboard (${stat.ip}) &rarr;</a>
-                  <a class="btn-dashboard-link secondary" href="http://orbit.local">Open via http://orbit.local &rarr;</a>
-                </div>
-                <div style="margin-top: 12px; font-size: 0.78rem; color: var(--muted); text-align: center;">
-                  Setup complete! You can now switch your phone back to <strong>${escapeHtml(stat.ssid || ssid)}</strong>.
-                </div>
-              `;
-              btnSubmit.disabled = false;
-              return;
-            } else if (stat.connect_status === 'failed' || stat.connect_status === 'not_found' || stat.connect_status === 'timeout') {
-              clearInterval(pollInterval);
-              showConnectionError(ssid, stat.connect_status);
-              return;
-            }
-          } catch (e) {
-            // Transient fetch error during Wi-Fi state change is ignored
-          }
+      const pollInterval = setInterval(async () => {
+        attempts++;
+        try {
+          const statRes = await fetch('/api/wifi/status?_t=' + Date.now());
+          const stat = await statRes.json();
 
-          if (attempts >= maxAttempts) {
+          if (stat.connected || stat.connect_status === 'connected') {
+            clearInterval(pollInterval);
+            showSuccess(stat.ssid || ssid, stat.ip);
+            return;
+          } else if (stat.connect_status === 'failed') {
+            clearInterval(pollInterval);
+            showConnectionError(ssid, 'failed');
+            return;
+          } else if (stat.connect_status === 'not_found') {
+            clearInterval(pollInterval);
+            showConnectionError(ssid, 'not_found');
+            return;
+          } else if (stat.connect_status === 'timeout') {
             clearInterval(pollInterval);
             showConnectionError(ssid, 'timeout');
+            return;
           }
-        }, 800);
+        } catch (e) {
+          // If phone switched back to home Wi-Fi, try checking http://orbit.local
+          try {
+            const localRes = await fetch('http://orbit.local/api/wifi/status?_t=' + Date.now());
+            const localStat = await localRes.json();
+            if (localStat.connected || localStat.connect_status === 'connected') {
+              clearInterval(pollInterval);
+              showSuccess(localStat.ssid || ssid, localStat.ip);
+              return;
+            }
+          } catch (_) {}
+        }
 
-      } catch (err) {
-        showConnectionError(ssid, 'submission');
-      }
+        if (attempts >= maxAttempts) {
+          clearInterval(pollInterval);
+          // Timed out without verified connection -> show clear connection failure
+          showConnectionError(ssid, 'timeout');
+        }
+      }, 800);
     });
+
+    function showSuccess(confirmedSsid, ip) {
+      statusSpinner.style.display = 'none';
+      statusHeader.style.color = 'var(--mint)';
+      statusTitle.innerHTML = '&#x2705; Connected Successfully!';
+      statusDetail.innerHTML = `
+        ORBIT is now connected to <strong>${escapeHtml(confirmedSsid)}</strong>.<br>
+        Assigned Local IP: <strong>${ip}</strong><br>
+        <div class="btn-action-group">
+          <a class="btn-dashboard-link" href="http://${ip}">Open ORBIT Dashboard (${ip}) &rarr;</a>
+          <a class="btn-dashboard-link secondary" href="http://orbit.local">Open via http://orbit.local &rarr;</a>
+        </div>
+        <div style="margin-top: 12px; font-size: 0.78rem; color: var(--muted); text-align: center;">
+          Setup complete! You can now switch your phone back to <strong>${escapeHtml(confirmedSsid)}</strong>.
+        </div>
+      `;
+      btnSubmit.disabled = false;
+    }
 
     function showConnectionError(ssid, reason) {
       statusSpinner.style.display = 'none';
       statusHeader.style.color = 'var(--red)';
       statusTitle.innerHTML = '&#x26A0;&#xFE0F; Connection Failed';
 
-      let msg = `Could not connect to <strong>${escapeHtml(ssid)}</strong>.`;
+      let msg = `Could not connect to <strong>${escapeHtml(ssid)}</strong>. `;
       if (reason === 'failed') {
-        msg += ' Authentication failed. Please verify that your Wi-Fi password is correct.';
+        msg += 'Incorrect Wi-Fi password. Please double check your password and try again.';
       } else if (reason === 'not_found') {
-        msg += ' The network SSID could not be reached. Ensure the router is powered on and within range.';
+        msg += 'Network SSID could not be found. Ensure router is powered on and within range.';
       } else if (reason === 'timeout') {
-        msg += ' Connection timed out. Please check that the password is correct and try again.';
+        msg += 'Connection timed out. ORBIT could not connect to this network. Please verify your password and signal strength, then try again.';
       } else {
-        msg += ' Failed to transmit credentials. Ensure your device is still connected to the ORBIT-Setup hotspot.';
+        msg += 'Failed to connect. Please check your network credentials and try again.';
       }
 
       statusDetail.innerHTML = `
