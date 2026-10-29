@@ -550,7 +550,7 @@ void WebServer::setupRestApi() {
     // 5. Wi-Fi Scan Results API (GET /api/wifi/scan)
     _server.on("/api/wifi/scan", HTTP_GET, [](AsyncWebServerRequest* request) {
         if (!WifiManager::getInstance().isScanning() && WifiManager::getInstance().getScannedNetworks().empty()) {
-            WifiManager::getInstance().startScan();
+            WifiManager::getInstance().requestScan();
         }
         String res = WifiManager::getInstance().getScannedNetworksJson();
         request->send(200, "application/json", res);
@@ -558,7 +558,7 @@ void WebServer::setupRestApi() {
 
     // 6. Trigger New Wi-Fi Scan (POST /api/wifi/scan)
     _server.on("/api/wifi/scan", HTTP_POST, [](AsyncWebServerRequest* request) {
-        WifiManager::getInstance().startScan();
+        WifiManager::getInstance().requestScan();
         request->send(200, "application/json", "{\"status\":\"scanning\"}");
     });
 

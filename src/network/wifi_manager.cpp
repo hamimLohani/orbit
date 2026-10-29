@@ -138,118 +138,91 @@ String WifiManager::getSsid() const {
 }
 
 void WifiManager::startScan() {
-    if (_scanning) return;
+    _scanRequested = true;
+}
 
-    // Disconnect pending STA connection so ESP-IDF doesn't reject scan with ESP_ERR_WIFI_STATE
-    if (_connecting || WiFi.status() != WL_CONNECTED) {
-        WiFi.disconnect(false);
-        _connecting = false;
-        delay(50);
-    }
+void WifiManager::handleBackgroundScan() {
+    uint32_t now = millis();
 
-    WiFi.mode(WIFI_AP_STA);
-    WiFi.enableSTA(true);
-    WiFi.scanDelete();
+    // 1. If currently scanning, check if the driver completed
+    if (_scanning) {
+        int16_t n = WiFi.scanComplete();
+        if (n >= 0) {
+            _scannedNetworks.clear();
+            for (int i = 0; i < n; ++i) {
+                String s = WiFi.SSID(i);
+                s.trim();
+                if (s.length() == 0) continue;
 
-    // Standard 2-param async scan (300ms default active dwell time)
-    int16_t res = WiFi.scanNetworks(true /* async */, false /* show hidden */);
-    if (res == WIFI_SCAN_RUNNING) {
-        _scanning = true;
-        _scanStartTime = millis();
-        Serial.println("[WiFi] Async 2.4 GHz network scan initiated...");
+                // Deduplicate SSIDs, keeping strongest RSSI
+                bool exists = false;
+                for (auto& item : _scannedNetworks) {
+                    if (item.ssid == s) {
+                        exists = true;
+                        if (WiFi.RSSI(i) > item.rssi) {
+                            item.rssi = WiFi.RSSI(i);
+                        }
+                        break;
+                    }
+                }
+                if (!exists) {
+                    ScannedNetwork net;
+                    net.ssid = s;
+                    net.rssi = WiFi.RSSI(i);
+                    net.secure = (WiFi.encryptionType(i) != WIFI_AUTH_OPEN);
+                    net.channel = WiFi.channel(i);
+                    _scannedNetworks.push_back(net);
+                }
+            }
+
+            // Sort descending by signal strength
+            std::sort(_scannedNetworks.begin(), _scannedNetworks.end(), [](const ScannedNetwork& a, const ScannedNetwork& b) {
+                return a.rssi > b.rssi;
+            });
+
+            WiFi.scanDelete();
+            _scanning = false;
+            _scanRequested = false;
+            _lastScanTime = now;
+            Serial.printf("[WiFi] Scan complete. Found %d networks.\n", (int)_scannedNetworks.size());
+        } else if (n == WIFI_SCAN_FAILED) {
+            // Check timeout (5 seconds timeout)
+            if (now - _scanStartTime > 5000) {
+                _scanning = false;
+                _scanRequested = false;
+                _lastScanTime = now;
+                Serial.println("[WiFi] Scan timed out or interrupted.");
+            }
+        }
         return;
     }
 
-    Serial.printf("[WiFi] Async scan start returned: %d. Falling back to synchronous scan...\n", res);
-    // If async scan failed (e.g. transient radio state transition), execute synchronous scan fallback
-    int16_t n = WiFi.scanNetworks(false /* async */, false /* show hidden */);
-    if (n >= 0) {
-        _scannedNetworks.clear();
-        for (int i = 0; i < n; ++i) {
-            String s = WiFi.SSID(i);
-            s.trim();
-            if (s.length() == 0) continue;
+    // 2. If not scanning, check if a scan should be initiated
+    // Trigger if:
+    // - User requested a scan (_scanRequested)
+    // - OR cache is empty and at least 3 seconds have passed since boot/last attempt
+    // - OR 45 seconds have elapsed to keep the network list fresh
+    bool shouldScan = _scanRequested || (_scannedNetworks.empty() && (now - _lastScanTime > 3000)) || (now - _lastScanTime > 45000);
+    if (!shouldScan) return;
 
-            // Deduplicate SSIDs, keeping strongest RSSI
-            bool exists = false;
-            for (auto& item : _scannedNetworks) {
-                if (item.ssid == s) {
-                    exists = true;
-                    if (WiFi.RSSI(i) > item.rssi) {
-                        item.rssi = WiFi.RSSI(i);
-                    }
-                    break;
-                }
-            }
-            if (!exists) {
-                ScannedNetwork net;
-                net.ssid = s;
-                net.rssi = WiFi.RSSI(i);
-                net.secure = (WiFi.encryptionType(i) != WIFI_AUTH_OPEN);
-                net.channel = WiFi.channel(i);
-                _scannedNetworks.push_back(net);
-            }
-        }
+    _scanRequested = false;
+    _lastScanTime = now;
 
-        // Sort descending by signal strength
-        std::sort(_scannedNetworks.begin(), _scannedNetworks.end(), [](const ScannedNetwork& a, const ScannedNetwork& b) {
-            return a.rssi > b.rssi;
-        });
-
-        WiFi.scanDelete();
-        _scanning = false;
-        Serial.printf("[WiFi] Synchronous scan complete. Found %d networks.\n", (int)_scannedNetworks.size());
-    } else {
-        _scanning = false;
-        Serial.printf("[WiFi] Synchronous scan also returned: %d\n", n);
+    // Ensure Wi-Fi radio is in WIFI_AP_STA mode so scanning works alongside SoftAP
+    if (WiFi.getMode() != WIFI_AP_STA) {
+        WiFi.mode(WIFI_AP_STA);
     }
-}
+    WiFi.enableSTA(true);
+    WiFi.scanDelete();
 
-void WifiManager::checkScanCompletion() {
-    if (!_scanning) return;
-    int16_t n = WiFi.scanComplete();
-    if (n >= 0) {
-        _scannedNetworks.clear();
-        for (int i = 0; i < n; ++i) {
-            String s = WiFi.SSID(i);
-            s.trim();
-            if (s.length() == 0) continue;
-
-            // Deduplicate SSIDs, keeping strongest RSSI
-            bool exists = false;
-            for (auto& item : _scannedNetworks) {
-                if (item.ssid == s) {
-                    exists = true;
-                    if (WiFi.RSSI(i) > item.rssi) {
-                        item.rssi = WiFi.RSSI(i);
-                    }
-                    break;
-                }
-            }
-            if (!exists) {
-                ScannedNetwork net;
-                net.ssid = s;
-                net.rssi = WiFi.RSSI(i);
-                net.secure = (WiFi.encryptionType(i) != WIFI_AUTH_OPEN);
-                net.channel = WiFi.channel(i);
-                _scannedNetworks.push_back(net);
-            }
-        }
-
-        // Sort descending by signal strength
-        std::sort(_scannedNetworks.begin(), _scannedNetworks.end(), [](const ScannedNetwork& a, const ScannedNetwork& b) {
-            return a.rssi > b.rssi;
-        });
-
-        WiFi.scanDelete();
-        _scanning = false;
-        Serial.printf("[WiFi] Scan complete. Found %d networks.\n", (int)_scannedNetworks.size());
-    } else if (n == WIFI_SCAN_FAILED) {
-        // Only mark failed if scan has been running for at least 1500ms to avoid premature failure
-        if (millis() - _scanStartTime > 1500) {
-            _scanning = false;
-            Serial.println("[WiFi] Scan failed or interrupted.");
-        }
+    // Use active scan with 150ms channel dwell time (fast, doesn't drop AP beacons)
+    int16_t res = WiFi.scanNetworks(true /* async */, false /* show hidden */, false /* passive */, 150 /* max_ms_per_chan */);
+    if (res == WIFI_SCAN_RUNNING) {
+        _scanning = true;
+        _scanStartTime = now;
+        Serial.println("[WiFi] Background 2.4 GHz network scan initiated (150ms/ch)...");
+    } else {
+        Serial.printf("[WiFi] scanNetworks start returned: %d\n", res);
     }
 }
 
@@ -276,8 +249,10 @@ void WifiManager::update() {
         _dnsServer.processNextRequest();
     }
 
-    // Process background Wi-Fi scan results
-    checkScanCompletion();
+    // Process background Wi-Fi scan results (in SoftAP setup mode)
+    if (_apActive) {
+        handleBackgroundScan();
+    }
 
     uint32_t now = millis();
     if (now - _lastCheckTime < 1000) return;

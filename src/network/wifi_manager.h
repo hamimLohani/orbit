@@ -44,6 +44,7 @@ public:
 
     // Asynchronous Wi-Fi Scanning
     void startScan();
+    void requestScan() { _scanRequested = true; }
     bool isScanning() const { return _scanning; }
     const std::vector<ScannedNetwork>& getScannedNetworks() const { return _scannedNetworks; }
     String getScannedNetworksJson();
@@ -53,13 +54,15 @@ private:
     ~WifiManager() = default;
 
     void startStation();
-    void checkScanCompletion();
+    void handleBackgroundScan();
 
     DNSServer _dnsServer;
     bool _apActive = false;
     bool _connecting = false;
     bool _scanning = false;
+    bool _scanRequested = false;
     uint32_t _scanStartTime = 0;
+    uint32_t _lastScanTime = 0;
     uint32_t _lastCheckTime = 0;
     uint32_t _connectStartTime = 0;
     uint32_t _apGracePeriodEnd = 0;
