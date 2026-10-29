@@ -390,7 +390,7 @@ const char WIFI_SETUP_HTML[] PROGMEM = R"rawliteral(
 
     <!-- Scanned Wi-Fi Section -->
     <div class="section-title">
-      <span>Nearby Networks (2.4 GHz)</span>
+      <span>Nearby Networks</span>
       <button class="btn-rescan" id="btn-rescan" title="Scan again">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>
         <span>Rescan</span>
@@ -511,19 +511,19 @@ const char WIFI_SETUP_HTML[] PROGMEM = R"rawliteral(
         }
 
         btnRescan.classList.remove('spinning');
-        netList.innerHTML = '';
 
         if (!data.networks || data.networks.length === 0) {
-          netList.innerHTML = `
-            <div class="empty-state">
-              No 2.4 GHz networks discovered yet.<br>Click <strong>Rescan</strong> or enter your SSID manually below.
-              <div style="margin-top: 10px; font-size: 0.75rem; color: #8b9bb4; line-height: 1.4;">
-                💡 <em>Note: If connecting to a mobile phone hotspot, ensure <strong>2.4 GHz Band</strong> or <strong>"Maximize Compatibility"</strong> is turned ON in your phone's Hotspot settings.</em>
+          if (netList.querySelectorAll('.net-item').length === 0) {
+            netList.innerHTML = `
+              <div class="empty-state">
+                No networks discovered yet.<br>Click <strong>Rescan</strong> or enter your SSID manually below.
               </div>
-            </div>
-          `;
+            `;
+          }
           return;
         }
+
+        netList.innerHTML = '';
 
         data.networks.forEach(net => {
           const item = document.createElement('div');
@@ -631,7 +631,7 @@ const char WIFI_SETUP_HTML[] PROGMEM = R"rawliteral(
             statusSpinner.style.display = 'none';
             statusHeader.style.color = 'var(--red)';
             statusTitle.innerHTML = '&#x26A0;&#xFE0F; Connection Failed';
-            statusDetail.innerHTML = 'Could not connect to <strong>' + escapeHtml(ssid) + '</strong>. Please verify that the password is correct, ensure your router has 2.4GHz enabled, and try again.';
+            statusDetail.innerHTML = 'Could not connect to <strong>' + escapeHtml(ssid) + '</strong>. Please verify that the password is correct and try again.';
             btnSubmit.disabled = false;
           }
         }, 1000);

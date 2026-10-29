@@ -62,7 +62,7 @@ void WifiManager::startApFallback() {
     Serial.printf("[WiFi] SoftAP started: %s (Password: %s) IP: %s\n", 
                   DEFAULT_AP_SSID, DEFAULT_AP_PASS, WiFi.softAPIP().toString().c_str());
 
-    // Proactively scan 2.4 GHz networks so they are immediately cached when user opens setup portal
+    // Proactively scan networks so they are immediately cached when user opens setup portal
     startScan();
 }
 
@@ -163,18 +163,29 @@ void WifiManager::performScan() {
         delay(40);
     }
 
-    // 3. Configure scan with home channel dwell time so SoftAP clients do NOT drop
+    // 3. Configure scan with worldwide channels (1-14) and home channel dwell time so SoftAP clients do NOT drop
+    wifi_country_t country = {
+        .cc = "01",
+        .schan = 1,
+        .nchan = 14,
+        .max_tx_power = 20,
+        .policy = WIFI_COUNTRY_POLICY_MANUAL
+    };
+    esp_wifi_set_country(&country);
+
     wifi_scan_config_t config;
     memset(&config, 0, sizeof(wifi_scan_config_t));
     config.scan_type = WIFI_SCAN_TYPE_ACTIVE;
-    config.scan_time.active.min = 0;
+    config.scan_time.active.min = 20;
     config.scan_time.active.max = 120; // 120ms per channel
     config.home_chan_dwell_time = 30;  // 30ms back on AP channel 1 between channels
-    config.show_hidden = false;
+    config.show_hidden = true;
 
     // 4. Synchronous blocking scan inside taskNetwork (Core 0 priority 1)
     esp_err_t err = esp_wifi_scan_start(&config, true /* block */);
     Serial.printf("[WiFi] esp_wifi_scan_start: 0x%x (%s)\n", err, esp_err_to_name(err));
+
+    std::vector<ScannedNetwork> newNetworks;
 
     if (err == ESP_OK) {
         uint16_t apCount = 0;
@@ -185,14 +196,13 @@ void WifiManager::performScan() {
             wifi_ap_record_t* apList = (wifi_ap_record_t*)malloc(apCount * sizeof(wifi_ap_record_t));
             if (apList) {
                 if (esp_wifi_scan_get_ap_records(&apCount, apList) == ESP_OK) {
-                    _scannedNetworks.clear();
                     for (uint16_t i = 0; i < apCount; ++i) {
                         String s = (const char*)apList[i].ssid;
                         s.trim();
                         if (s.length() == 0) continue;
 
                         bool exists = false;
-                        for (auto& item : _scannedNetworks) {
+                        for (auto& item : newNetworks) {
                             if (item.ssid == s) {
                                 exists = true;
                                 if (apList[i].rssi > item.rssi) item.rssi = apList[i].rssi;
@@ -205,29 +215,26 @@ void WifiManager::performScan() {
                             net.rssi = apList[i].rssi;
                             net.secure = (apList[i].authmode != WIFI_AUTH_OPEN);
                             net.channel = apList[i].primary;
-                            _scannedNetworks.push_back(net);
+                            newNetworks.push_back(net);
                         }
                     }
-
-                    std::sort(_scannedNetworks.begin(), _scannedNetworks.end(), [](const ScannedNetwork& a, const ScannedNetwork& b) {
-                        return a.rssi > b.rssi;
-                    });
-                    Serial.printf("[WiFi] Cached %d unique networks.\n", (int)_scannedNetworks.size());
                 }
                 free(apList);
             }
         }
-    } else {
-        // Fallback to standard WiFi.scanNetworks if esp_wifi_scan_start had transient state
+    }
+
+    // 5. Fallback to standard WiFi.scanNetworks if native scan returned empty or transient error
+    if (newNetworks.empty()) {
         int16_t n = WiFi.scanNetworks(false, false);
+        Serial.printf("[WiFi] Fallback WiFi.scanNetworks returned: %d\n", n);
         if (n > 0) {
-            _scannedNetworks.clear();
             for (int i = 0; i < n; ++i) {
                 String s = WiFi.SSID(i);
                 s.trim();
                 if (s.length() == 0) continue;
                 bool exists = false;
-                for (auto& item : _scannedNetworks) {
+                for (auto& item : newNetworks) {
                     if (item.ssid == s) {
                         exists = true;
                         if (WiFi.RSSI(i) > item.rssi) item.rssi = WiFi.RSSI(i);
@@ -240,14 +247,21 @@ void WifiManager::performScan() {
                     net.rssi = WiFi.RSSI(i);
                     net.secure = (WiFi.encryptionType(i) != WIFI_AUTH_OPEN);
                     net.channel = WiFi.channel(i);
-                    _scannedNetworks.push_back(net);
+                    newNetworks.push_back(net);
                 }
             }
-            std::sort(_scannedNetworks.begin(), _scannedNetworks.end(), [](const ScannedNetwork& a, const ScannedNetwork& b) {
-                return a.rssi > b.rssi;
-            });
             WiFi.scanDelete();
         }
+    }
+
+    if (!newNetworks.empty()) {
+        std::sort(newNetworks.begin(), newNetworks.end(), [](const ScannedNetwork& a, const ScannedNetwork& b) {
+            return a.rssi > b.rssi;
+        });
+        _scannedNetworks = std::move(newNetworks);
+        Serial.printf("[WiFi] Cached %d unique networks.\n", (int)_scannedNetworks.size());
+    } else {
+        Serial.println("[WiFi] No networks found in current scan pass (retaining previous cache if any).");
     }
 
     _scanning = false;

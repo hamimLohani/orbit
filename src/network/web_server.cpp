@@ -55,8 +55,18 @@ static String processWifiSetupHtml(const String& var) {
             sigSvg += "<rect x=\"17\" y=\"4\" width=\"3\" height=\"18\" rx=\"1\" opacity=\"" + String(bars >= 4 ? "1" : "0.25") + "\"/>";
             sigSvg += "</svg>";
 
-            html += "<div class=\"net-item\" onclick=\"selectNetwork(this, '" + net.ssid + "')\">";
-            html += "<div class=\"net-name\">" + lockSvg + "<span>" + net.ssid + "</span></div>";
+            String cleanSsid = net.ssid;
+            cleanSsid.replace("\\", "\\\\");
+            cleanSsid.replace("'", "\\'");
+            cleanSsid.replace("\"", "&quot;");
+
+            String displaySsid = net.ssid;
+            displaySsid.replace("&", "&amp;");
+            displaySsid.replace("<", "&lt;");
+            displaySsid.replace(">", "&gt;");
+
+            html += "<div class=\"net-item\" onclick=\"selectNetwork(this, '" + cleanSsid + "')\">";
+            html += "<div class=\"net-name\">" + lockSvg + "<span>" + displaySsid + "</span></div>";
             html += "<div class=\"net-meta\"><span class=\"net-rssi\">" + String(net.rssi) + " dBm</span>" + sigSvg + "</div>";
             html += "</div>";
         }
