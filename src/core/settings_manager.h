@@ -22,6 +22,9 @@ public:
     String getWifiPass();
     void setWifiPass(const String& pass);
 
+    bool getOfflineMode();
+    void setOfflineMode(bool offline);
+
     uint8_t getBrightness();
     void setBrightness(uint8_t brightness);
 

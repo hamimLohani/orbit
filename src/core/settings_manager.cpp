@@ -21,6 +21,14 @@ void SettingsManager::setWifiPass(const String& pass) {
     _prefs.putString("wifi_pass", pass);
 }
 
+bool SettingsManager::getOfflineMode() {
+    return _prefs.getBool("offline_mode", false);
+}
+
+void SettingsManager::setOfflineMode(bool offline) {
+    _prefs.putBool("offline_mode", offline);
+}
+
 uint8_t SettingsManager::getBrightness() {
     return _prefs.getUChar("bright", 80);
 }

@@ -13,13 +13,14 @@ void WifiManager::init() {
 void WifiManager::startStation() {
     String ssid = SettingsManager::getInstance().getWifiSsid();
     String pass = SettingsManager::getInstance().getWifiPass();
+    bool offlineMode = SettingsManager::getInstance().getOfflineMode();
 
     WiFi.setSleep(false); // Low latency for WebSocket & HTTP
 
     bool isDummySsid = (ssid.length() == 0 || ssid == "ORBIT_WiFi" || ssid == "YOUR_WIFI_SSID" || ssid == "YOUR_SSID");
     bool isDummyPass = (pass == "SuperSecretPassword" || pass == "12345678");
 
-    if (!isDummySsid && !isDummyPass) {
+    if (!offlineMode && !isDummySsid && !isDummyPass) {
         WiFi.mode(WIFI_STA);
         WiFi.begin(ssid.c_str(), pass.c_str());
         _connecting = true;
@@ -27,7 +28,11 @@ void WifiManager::startStation() {
         _apActive = false;
         Serial.printf("[WiFi] Attempting connection to network: %s\n", ssid.c_str());
     } else {
-        // No custom WiFi configured or placeholder password, start AP mode for initial setup
+        if (offlineMode) {
+            Serial.println("[WiFi] Offline mode active — skipping station connection, starting setup hotspot.");
+        } else {
+            Serial.println("[WiFi] No custom WiFi configured or placeholder password, start AP mode for initial setup.");
+        }
         startApFallback();
     }
 }
@@ -61,6 +66,7 @@ void WifiManager::startApFallback() {
 void WifiManager::connect(const String& ssid, const String& pass) {
     SettingsManager::getInstance().setWifiSsid(ssid);
     SettingsManager::getInstance().setWifiPass(pass);
+    SettingsManager::getInstance().setOfflineMode(false); // Reset offline mode when connecting
 
     Serial.printf("[WiFi] User connecting to: %s\n", ssid.c_str());
 
@@ -80,9 +86,10 @@ void WifiManager::disconnect() {
 
 void WifiManager::forgetWifi() {
     Serial.println("[WiFi] User requested to forget Wi-Fi credentials.");
-    // 1. Erase from NVS flash storage
+    // 1. Erase from NVS flash storage and set offline mode
     SettingsManager::getInstance().setWifiSsid("");
     SettingsManager::getInstance().setWifiPass("");
+    SettingsManager::getInstance().setOfflineMode(true); // Pattern from Smart-Multi-Plug: mark offline
 
     // 2. Erase from ESP32 WiFi STA stack
     WiFi.disconnect(true, true /* eraseAP = true */);
@@ -287,10 +294,10 @@ void WifiManager::update() {
             SharedData::getInstance().setNetwork(true, WiFi.RSSI(), WiFi.localIP().toString().c_str());
             EventBus::getInstance().publish(EVENT_WIFI_CONNECTED, nullptr);
             Serial.printf("[WiFi] Connected! IP: %s RSSI: %d dBm\n", WiFi.localIP().toString().c_str(), (int)WiFi.RSSI());
-        } else if (now - _connectStartTime > 16000) { // 16s connection timeout
+        } else if (now - _connectStartTime > 8000) { // 8s connection timeout (matches Smart-Multi-Plug)
             _connecting = false;
             WiFi.disconnect(false); // Abort pending association attempts so radio is fully idle
-            Serial.println("[WiFi] Connection timed out. Switched station radio to idle.");
+            Serial.println("[WiFi] Connection timed out after 8s. Switched station radio to idle.");
             // Ensure AP is active so user can re-try
             if (!_apActive) {
                 startApFallback();
