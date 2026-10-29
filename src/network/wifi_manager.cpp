@@ -4,6 +4,7 @@
 #include "src/core/event_bus.h"
 #include "src/display/render_engine.h"
 #include "src/display/theme.h"
+#include <esp_wifi.h>
 #include <algorithm>
 
 void WifiManager::init() {
@@ -149,11 +150,11 @@ void WifiManager::performScan() {
     _scanning = true;
     _scanStartTime = millis();
 
-    Serial.println("[WiFi] Starting synchronous Wi-Fi scan in taskNetwork...");
+    Serial.println("[WiFi] Starting native ESP-IDF Wi-Fi scan in taskNetwork...");
 
     // 1. Ensure radio is in clean state: no auto-reconnect loops
     WiFi.setAutoReconnect(false);
-    WiFi.disconnect(false);
+    esp_wifi_disconnect();
     delay(40);
 
     // 2. Ensure dual AP+STA mode
@@ -162,52 +163,91 @@ void WifiManager::performScan() {
         delay(40);
     }
 
-    // 3. Clear previous scan results
-    WiFi.scanDelete();
+    // 3. Configure scan with home channel dwell time so SoftAP clients do NOT drop
+    wifi_scan_config_t config;
+    memset(&config, 0, sizeof(wifi_scan_config_t));
+    config.scan_type = WIFI_SCAN_TYPE_ACTIVE;
+    config.scan_time.active.min = 0;
+    config.scan_time.active.max = 120; // 120ms per channel
+    config.home_chan_dwell_time = 30;  // 30ms back on AP channel 1 between channels
+    config.show_hidden = false;
 
-    // 4. Perform synchronous scan using standard tuned ESP-IDF parameters
-    // In FreeRTOS taskNetwork (priority 1), this blocks only taskNetwork for ~1.5s
-    // while async_tcp web server, display (Core 1), and input (Core 1) run smoothly.
-    int16_t n = WiFi.scanNetworks(false /* sync */, false /* show hidden */);
-    Serial.printf("[WiFi] scanNetworks finished with code: %d\n", n);
+    // 4. Synchronous blocking scan inside taskNetwork (Core 0 priority 1)
+    esp_err_t err = esp_wifi_scan_start(&config, true /* block */);
+    Serial.printf("[WiFi] esp_wifi_scan_start: 0x%x (%s)\n", err, esp_err_to_name(err));
 
-    if (n >= 0) {
-        _scannedNetworks.clear();
-        for (int i = 0; i < n; ++i) {
-            String s = WiFi.SSID(i);
-            s.trim();
-            if (s.length() == 0) continue;
+    if (err == ESP_OK) {
+        uint16_t apCount = 0;
+        esp_wifi_scan_get_ap_num(&apCount);
+        Serial.printf("[WiFi] Driver found %u AP records.\n", apCount);
 
-            // Deduplicate SSIDs, keeping strongest RSSI
-            bool exists = false;
-            for (auto& item : _scannedNetworks) {
-                if (item.ssid == s) {
-                    exists = true;
-                    if (WiFi.RSSI(i) > item.rssi) {
-                        item.rssi = WiFi.RSSI(i);
+        if (apCount > 0) {
+            wifi_ap_record_t* apList = (wifi_ap_record_t*)malloc(apCount * sizeof(wifi_ap_record_t));
+            if (apList) {
+                if (esp_wifi_scan_get_ap_records(&apCount, apList) == ESP_OK) {
+                    _scannedNetworks.clear();
+                    for (uint16_t i = 0; i < apCount; ++i) {
+                        String s = (const char*)apList[i].ssid;
+                        s.trim();
+                        if (s.length() == 0) continue;
+
+                        bool exists = false;
+                        for (auto& item : _scannedNetworks) {
+                            if (item.ssid == s) {
+                                exists = true;
+                                if (apList[i].rssi > item.rssi) item.rssi = apList[i].rssi;
+                                break;
+                            }
+                        }
+                        if (!exists) {
+                            ScannedNetwork net;
+                            net.ssid = s;
+                            net.rssi = apList[i].rssi;
+                            net.secure = (apList[i].authmode != WIFI_AUTH_OPEN);
+                            net.channel = apList[i].primary;
+                            _scannedNetworks.push_back(net);
+                        }
                     }
-                    break;
+
+                    std::sort(_scannedNetworks.begin(), _scannedNetworks.end(), [](const ScannedNetwork& a, const ScannedNetwork& b) {
+                        return a.rssi > b.rssi;
+                    });
+                    Serial.printf("[WiFi] Cached %d unique networks.\n", (int)_scannedNetworks.size());
                 }
-            }
-            if (!exists) {
-                ScannedNetwork net;
-                net.ssid = s;
-                net.rssi = WiFi.RSSI(i);
-                net.secure = (WiFi.encryptionType(i) != WIFI_AUTH_OPEN);
-                net.channel = WiFi.channel(i);
-                _scannedNetworks.push_back(net);
+                free(apList);
             }
         }
-
-        // Sort descending by signal strength
-        std::sort(_scannedNetworks.begin(), _scannedNetworks.end(), [](const ScannedNetwork& a, const ScannedNetwork& b) {
-            return a.rssi > b.rssi;
-        });
-
-        WiFi.scanDelete();
-        Serial.printf("[WiFi] Scan complete. Found %d networks.\n", (int)_scannedNetworks.size());
     } else {
-        Serial.printf("[WiFi] Scan error: %d\n", n);
+        // Fallback to standard WiFi.scanNetworks if esp_wifi_scan_start had transient state
+        int16_t n = WiFi.scanNetworks(false, false);
+        if (n > 0) {
+            _scannedNetworks.clear();
+            for (int i = 0; i < n; ++i) {
+                String s = WiFi.SSID(i);
+                s.trim();
+                if (s.length() == 0) continue;
+                bool exists = false;
+                for (auto& item : _scannedNetworks) {
+                    if (item.ssid == s) {
+                        exists = true;
+                        if (WiFi.RSSI(i) > item.rssi) item.rssi = WiFi.RSSI(i);
+                        break;
+                    }
+                }
+                if (!exists) {
+                    ScannedNetwork net;
+                    net.ssid = s;
+                    net.rssi = WiFi.RSSI(i);
+                    net.secure = (WiFi.encryptionType(i) != WIFI_AUTH_OPEN);
+                    net.channel = WiFi.channel(i);
+                    _scannedNetworks.push_back(net);
+                }
+            }
+            std::sort(_scannedNetworks.begin(), _scannedNetworks.end(), [](const ScannedNetwork& a, const ScannedNetwork& b) {
+                return a.rssi > b.rssi;
+            });
+            WiFi.scanDelete();
+        }
     }
 
     _scanning = false;

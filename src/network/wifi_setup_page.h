@@ -398,7 +398,7 @@ const char WIFI_SETUP_HTML[] PROGMEM = R"rawliteral(
     </div>
 
     <div class="network-list" id="network-list">
-      <div class="empty-state" id="scan-status-msg">Scanning wireless networks...</div>
+      %NETWORKS_LIST%
     </div>
 
     <!-- Connection Form -->
@@ -555,6 +555,13 @@ const char WIFI_SETUP_HTML[] PROGMEM = R"rawliteral(
     function escapeHtml(str) {
       return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
+
+    window.selectNetwork = function(el, ssid) {
+      document.querySelectorAll('.net-item').forEach(item => item.classList.remove('selected'));
+      if (el) el.classList.add('selected');
+      ssidInput.value = ssid;
+      passInput.focus();
+    };
 
     // Manual Rescan Button
     btnRescan.addEventListener('click', () => {

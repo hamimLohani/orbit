@@ -37,6 +37,34 @@ static void sendDashboardHtml(AsyncWebServerRequest* request) {
     request->send(res);
 }
 
+static String processWifiSetupHtml(const String& var) {
+    if (var == "NETWORKS_LIST") {
+        const auto& networks = WifiManager::getInstance().getScannedNetworks();
+        if (networks.empty()) {
+            return "<div class=\"empty-state\"><div class=\"spinner\" style=\"margin: 0 auto 12px; width: 24px; height: 24px; border: 2px solid var(--border); border-top-color: var(--cyan); border-radius: 50%; animation: spin 1s linear infinite;\"></div>Scanning for nearby networks...</div>";
+        }
+        String html = "";
+        for (const auto& net : networks) {
+            String lockSvg = net.secure ? "<svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"2.5\"><rect x=\"3\" y=\"11\" width=\"18\" height=\"11\" rx=\"2\" ry=\"2\"></rect><path d=\"M7 11V7a5 5 0 0 1 10 0v4\"></path></svg>" : "";
+            int bars = net.rssi > -60 ? 4 : (net.rssi > -70 ? 3 : (net.rssi > -80 ? 2 : 1));
+            String barColor = net.rssi > -65 ? "var(--mint)" : (net.rssi > -78 ? "var(--cyan)" : "var(--red)");
+            String sigSvg = "<svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"" + barColor + "\">";
+            sigSvg += "<rect x=\"2\" y=\"16\" width=\"3\" height=\"6\" rx=\"1\" opacity=\"" + String(bars >= 1 ? "1" : "0.25") + "\"/>";
+            sigSvg += "<rect x=\"7\" y=\"12\" width=\"3\" height=\"10\" rx=\"1\" opacity=\"" + String(bars >= 2 ? "1" : "0.25") + "\"/>";
+            sigSvg += "<rect x=\"12\" y=\"8\" width=\"3\" height=\"14\" rx=\"1\" opacity=\"" + String(bars >= 3 ? "1" : "0.25") + "\"/>";
+            sigSvg += "<rect x=\"17\" y=\"4\" width=\"3\" height=\"18\" rx=\"1\" opacity=\"" + String(bars >= 4 ? "1" : "0.25") + "\"/>";
+            sigSvg += "</svg>";
+
+            html += "<div class=\"net-item\" onclick=\"selectNetwork(this, '" + net.ssid + "')\">";
+            html += "<div class=\"net-name\">" + lockSvg + "<span>" + net.ssid + "</span></div>";
+            html += "<div class=\"net-meta\"><span class=\"net-rssi\">" + String(net.rssi) + " dBm</span>" + sigSvg + "</div>";
+            html += "</div>";
+        }
+        return html;
+    }
+    return String();
+}
+
 static void sendStyleCss(AsyncWebServerRequest* request) {
     if (LittleFS.exists("/web/style.css")) {
         request->send(LittleFS, "/web/style.css", "text/css");
@@ -99,7 +127,7 @@ void WebServer::init() {
 void WebServer::setupRoutes() {
     // 1. Wi-Fi Provisioning & Captive Portal Setup Page
     _server.on("/wifi", HTTP_GET, [](AsyncWebServerRequest* request) {
-        request->send_P(200, "text/html", WIFI_SETUP_HTML);
+        request->send_P(200, "text/html", WIFI_SETUP_HTML, processWifiSetupHtml);
     });
     _server.on("/setup", HTTP_GET, [](AsyncWebServerRequest* request) {
         request->redirect("/wifi");
@@ -206,7 +234,7 @@ void WebServer::setupRoutes() {
     _server.on("/", HTTP_GET, [](AsyncWebServerRequest* request) {
         // Query param override: ?setup forces Wi-Fi setup page
         if (request->hasParam("setup")) {
-            request->send_P(200, "text/html", WIFI_SETUP_HTML);
+            request->send_P(200, "text/html", WIFI_SETUP_HTML, processWifiSetupHtml);
             return;
         }
 
@@ -225,7 +253,7 @@ void WebServer::setupRoutes() {
         // If in SoftAP mode and not connected to home Wi-Fi, serve setup portal
         // (which features a 1-click button to launch the dashboard directly in SoftAP mode)
         if (WifiManager::getInstance().isApActive()) {
-            request->send_P(200, "text/html", WIFI_SETUP_HTML);
+            request->send_P(200, "text/html", WIFI_SETUP_HTML, processWifiSetupHtml);
             return;
         }
 
