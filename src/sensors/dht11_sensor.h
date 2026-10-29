@@ -1,10 +1,9 @@
 #pragma once
 #include <Arduino.h>
-#include <DHT.h>
 #include "include/config.h"
 
 // ==============================================================================
-// ORBIT v2 — Non-Blocking DHT11 Climate Sensor
+// ORBIT v2 — Non-Blocking Native DHT Climate Sensor (Watchdog-Safe)
 // ==============================================================================
 
 class Dht11Sensor {
@@ -22,12 +21,13 @@ public:
     bool isValid() const { return _valid; }
 
 private:
-    Dht11Sensor();
+    Dht11Sensor() = default;
     ~Dht11Sensor() = default;
 
-    DHT _dht;
+    bool readRaw(uint8_t data[5]);
+
     uint32_t _lastReadTime = 0;
-    float _lastTemp = 22.0f;
+    float _lastTemp = 24.0f;
     float _lastHum = 50.0f;
     bool _valid = false;
 };
